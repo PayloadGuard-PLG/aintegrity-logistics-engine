@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.expo/
+*.tsbuildinfo
+.env
+.env.local
+players.json
+__pycache__/
+*.pyc
+*.pyo

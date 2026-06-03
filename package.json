@@ -1,0 +1,62 @@
+{
+  "name": "squad-optimiser",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "cli": "npx tsx src/index.ts",
+    "test": "npx tsx tests/drill-logic-test.ts",
+    "test:storage": "npx tsx tests/storage-test.ts",
+    "test:logic": "npx tsx tests/logic-test.ts",
+    "test:engine": "npx tsx tests/engine-test.ts",
+    "test:projection": "npx tsx tests/projection-test.ts",
+    "sim:ala": "npx tsx tests/sim-ala.ts",
+    "db:generate": "drizzle-kit generate",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^14.1.0",
+    "@react-native-ml-kit/text-recognition": "^2.0.0",
+    "drizzle-orm": "^0.39.0",
+    "expo": "~53.0.0",
+    "expo-asset": "~11.1.7",
+    "expo-constants": "~17.1.8",
+    "expo-file-system": "~18.1.11",
+    "expo-font": "~13.3.2",
+    "expo-image-manipulator": "~13.1.7",
+    "expo-image-picker": "~16.1.4",
+    "expo-linking": "~7.1.7",
+    "expo-router": "~5.1.11",
+    "expo-screen-capture": "~7.2.0",
+    "expo-sqlite": "~15.2.14",
+    "expo-updates": "~0.28.18",
+    "metro-config": "^0.82.5",
+    "metro-resolver": "^0.82.5",
+    "react": "19.0.0",
+    "react-native": "0.79.6",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-svg": "15.11.2",
+    "zod": "^4.4.3"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "@react-native-ml-kit/text-recognition"
+        ],
+        "listUnknownPackages": false
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "~19.0.10",
+    "drizzle-kit": "^0.29.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.8.0"
+  }
+}

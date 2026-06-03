@@ -1,0 +1,85 @@
+name: Engine Proofs
+
+on:
+  pull_request:
+    branches:
+      - main
+
+# Proof failures block merge to main.
+# Nothing in this workflow modifies the source — it is read-only verification.
+#
+# Two independent jobs:
+#   z3-crosshair : Z3 SMT proofs (P7, P10–P15, P18–P19) +
+#                  Crosshair symbolic contracts (P5, P6, P8, P9, P16, P17) +
+#                  Hypothesis differential tests (Python spec vs TypeScript engine, Gap 3)
+#   dafny        : machine-checked algorithm proofs (P1–P6 via budget_model.dfy + gain_engine.dfy)
+#
+# Both must pass green before a PR can merge to main.
+
+jobs:
+  z3-crosshair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install proof dependencies
+        run: pip install z3-solver crosshair-tool pytest pytest-timeout hypothesis
+
+      - name: Run Z3, Crosshair and equivalence proofs
+        run: pytest tests/proofs/ -m proof -v --timeout=60
+        # Z3: `unknown` (timeout) is a hard failure — see _check() in test_z3_properties.py.
+        # Crosshair: counterexample prints violating inputs before failing.
+        # Equivalence: Python spec vs TypeScript engine, ε = 1e-10.
+
+  dafny:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET (required for Dafny)
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0'
+
+      - name: Install Dafny
+        run: dotnet tool install --global dafny
+
+      - name: Install Z3 4.12.1 (required by Dafny 4.x)
+        # dotnet tool install does not bundle Z3; download the official release binary.
+        # Export the path explicitly — passed to dafny via --solver-path below.
+        run: |
+          curl -fsSL https://github.com/Z3Prover/z3/releases/download/z3-4.12.1/z3-4.12.1-x64-glibc-2.35.zip -o z3.zip
+          unzip -q z3.zip
+          chmod +x z3-4.12.1-x64-glibc-2.35/bin/z3
+          echo "Z3_EXE=$PWD/z3-4.12.1-x64-glibc-2.35/bin/z3" >> "$GITHUB_ENV"
+
+      - name: Verify budget model (P1–P4)
+        run: dafny verify --solver-path "$Z3_EXE" verification/dafny/budget_model.dfy
+        # Expected: "Dafny program verifier finished with N verified, 0 errors"
+
+      - name: Verify gain engine (P5–P6)
+        run: dafny verify --solver-path "$Z3_EXE" --boogie /proverOpt:O:smt.arith.solver=6 verification/dafny/gain_engine.dfy
+        # --boogie /proverOpt:O:smt.arith.solver=6 enables Z3's NLSAT solver for nonlinear real arithmetic.
+        # This may discharge the exact fractional-gain case (remaining/cost < 1) that the default
+        # linear solver cannot handle symbolically. Current proof still holds without it (conservative 0.0
+        # model); the flag is additive — it cannot break an existing valid proof.
+        # Expected: "Dafny program verifier finished with N verified, 0 errors"

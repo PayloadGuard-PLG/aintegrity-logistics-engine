@@ -1,0 +1,162 @@
+{
+  "version": "2025",
+  "xpCostBase": 2.94,
+  "xpCostDecayK": 47,
+  "xpCostTable": [
+    {
+      "statMin": 0,
+      "statMax": 59,
+      "xpPer1Pct": 8
+    },
+    {
+      "statMin": 60,
+      "statMax": 79,
+      "xpPer1Pct": 10
+    },
+    {
+      "statMin": 80,
+      "statMax": 99,
+      "xpPer1Pct": 20
+    },
+    {
+      "statMin": 100,
+      "statMax": 119,
+      "xpPer1Pct": 30
+    },
+    {
+      "statMin": 120,
+      "statMax": 139,
+      "xpPer1Pct": 40
+    },
+    {
+      "statMin": 140,
+      "statMax": 159,
+      "xpPer1Pct": 50
+    },
+    {
+      "statMin": 160,
+      "statMax": 179,
+      "xpPer1Pct": 60
+    },
+    {
+      "statMin": 180,
+      "statMax": 199,
+      "xpPer1Pct": 80
+    },
+    {
+      "statMin": 200,
+      "statMax": 219,
+      "xpPer1Pct": 150
+    },
+    {
+      "statMin": 220,
+      "statMax": 239,
+      "xpPer1Pct": 200
+    },
+    {
+      "statMin": 240,
+      "statMax": 259,
+      "xpPer1Pct": 260
+    },
+    {
+      "statMin": 260,
+      "statMax": 279,
+      "xpPer1Pct": 340
+    },
+    {
+      "statMin": 280,
+      "statMax": 339,
+      "xpPer1Pct": 440
+    }
+  ],
+  "ageTable": {
+    "17": 1.1,
+    "18": 1.0,
+    "19": 1.0,
+    "20": 1.0,
+    "21": 1.0,
+    "22": 0.85,
+    "23": 0.85,
+    "24": 0.72,
+    "25": 0.72,
+    "26": 0.61,
+    "27": 0.61,
+    "28": 0.61,
+    "29": 0.50,
+    "30": 0
+  },
+  "talentMultipliers": {
+    "Fastest": 1.5,
+    "Fast": 1.25,
+    "Average": 1.1,
+    "Normal": 1.0,
+    "Slow": 0.47
+  },
+  "drillLevelMultipliers": {
+    "Very Easy": 1.0,
+    "Easy": 1.15,
+    "Medium": 1.3,
+    "Hard": 1.55,
+    "Very Hard": 1.7
+  },
+  "tierAttrAdditions": {
+    "T0": 0,
+    "T1": 10,
+    "T2": 30,
+    "T3": 50,
+    "T4": 80,
+    "T5": 120,
+    "T6": 160
+  },
+  "tierPointsRequired": {
+    "T0": 0,
+    "T1": 100,
+    "T2": 90,
+    "T3": 50,
+    "T4": 25,
+    "T5": 15,
+    "T6": 10
+  },
+  "fanClubCondReduction": [
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.5
+  ],
+  "tierIncrements": {
+    "T0": 0,
+    "T1": 10,
+    "T2": 20,
+    "T3": 20,
+    "T4": 30,
+    "T5": 40,
+    "T6": 40
+  },
+  "condLevelMultipliers": {
+    "Very Easy": 1,
+    "Easy": 2,
+    "Medium": 3,
+    "Hard": 4,
+    "Very Hard": 5
+  },
+  "baseLossPerDrill": 0.75,
+  "zeroDrainThreshold": 0.38,
+  "greyWeightMultiplier": 0.22,
+  "seasonDecayPerLevel": 20,
+  "statCap": 9999,
+  "maxBaseOvr": 180,
+  "baseXpPerSession": 676,
+  "drillXpFactor": 0.3,
+  "sessionBudgetDecay": 0.99,
+  "twoxAdMultiplier": 2.0,
+  "starDecayPerSession": 0.85,
+  "starOvrThreshold": 20,
+  "qualityOvrDivisor": 1,
+  "totalAttributeCount": 15,
+  "teamPlayDecayPerDay": 2,
+  "matchAdvisorMultiplier": 1.5,
+  "teamPlayFreeDrillsPerDay": 4,
+  "conditionPerRestorer": 15,
+  "maxTrainingLevel": 111
+}

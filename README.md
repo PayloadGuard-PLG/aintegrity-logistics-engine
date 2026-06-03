@@ -1,24 +1,37 @@
-# AIntegrity Logistics Engine
+# AIntegrity Resource Allocation Engine
 
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS-blue)
+![Updates](https://img.shields.io/badge/updates-OTA%20via%20EAS-brightgreen)
 ![Verified](https://img.shields.io/badge/engine-formally%20verified-green)
-![Proofs](https://img.shields.io/badge/proofs-30%2F30%20pass-brightgreen)
 ![License](https://img.shields.io/badge/license-Non--Commercial-red)
 
-A deterministic, offline-first maintenance investment engine. Given a tracked physical asset, a proposed investment cycle, and a calibrated cost model — the engine projects the outcome before any resource is committed. All computation is pure-functional and formally verified.
+**A deterministic, offline-first resource allocation and operational capacity projection engine.**
+
+Given a pool of tracked assets, a set of proposed investment cycles, and a calibrated cost model — the engine projects the outcome of any allocation decision before it is committed. All computation is pure-functional and formally verified. No accounts, no servers, no API calls.
 
 ---
 
 ## What It Does
 
-Field operators need to know the return on a maintenance investment cycle *before* committing it. Estimates based on averages or community data are unreliable when asset profiles vary. This engine applies a calibrated exponential cost model — back-calculated from controlled field observations — to project per-metric gains for any asset at any profile point.
+**The problem:** Field operators need to know the return on an investment cycle (time, resource units, or training budget) *before* committing it — not after. Estimates based on averages or community data are unreliable when asset profiles vary significantly.
 
-The projection accounts for:
-- Asset maturity index (efficiency degrades with age)
-- Efficiency class (Class-A / Standard / Degraded)
-- Primary vs secondary metric weighting
-- Geometric budget decay over long investment runs
-- Domain-configurable capacity ceiling rules
+**The solution:** A calibrated exponential cost model, empirically back-calculated from controlled field observations, projects per-metric gains for any asset at any profile point. The projection accounts for asset maturity, efficiency class, primary vs secondary metric weighting, and geometric budget decay over long investment runs.
+
+### Core Capabilities
+
+- **Calibrated Capacity Projections** — Projects the outcome of any proposed investment cycle for any tracked asset. The cost curve, budget decay, and efficiency multipliers are back-calculated from real observations, not estimates. Confirmed constants are validated; unconfirmed constants are clearly labelled.
+- **OCR Data Ingestion** — Scan physical or digital field documents via the device camera. ML Kit Vision processes images entirely on-device — no data leaves the device.
+- **Conditioning Operation Scheduling** — Ranks all available conditioning operations by return on operational readiness for the selected asset and support level. Zero-drain detection at maximum support.
+- **Sequential Allocation Planning** — Chain investment cycles, conditioning operations, and classification upgrades into a single sequential plan with a per-step capacity index breakdown.
+- **Formally Verified Engine** — Nineteen safety properties are machine-checked on every CI run via Dafny, Z3, and Crosshair. A proof failure blocks deployment.
+
+---
+
+## Architecture in One Paragraph
+
+The engine is a linear, deterministic pipeline of pure functions in `src/engine/engineMath.ts`. It reads calibrated constants from `profiles/game_2025.json` at module load time. Data enters via ML Kit OCR, is validated, and flows through: geometric budget calculation → efficiency multiplier composition → per-metric gain integral → composite capacity index formula → ceiling check. The Python verification layer (`verification/engine_pure.py`) is a parallel re-expression of the same mathematics, formally compared against the TypeScript engine by Hypothesis differential tests on every PR.
+
+Full specification: [`LOGISTICS_SYSTEM_BLUEPRINT.md`](./LOGISTICS_SYSTEM_BLUEPRINT.md)
 
 ---
 
@@ -27,16 +40,25 @@ The projection accounts for:
 ### Prerequisites
 
 - Node.js 20+
-- Python 3.11+
+- Expo CLI (`npm install -g expo-cli`)
+- EAS CLI (`npm install -g eas-cli`) — for builds and OTA
+- Android or iOS device with Expo Go, or a local simulator
 
 ### Install
 
 ```bash
-git clone https://github.com/PayloadGuard-PLG/aintegrity-logistics-engine.git
-cd aintegrity-logistics-engine
-git checkout claude/squad-optimiservp-BQH8C
+git clone https://github.com/PayloadGuard-PLG/aintegrity-squad-optimiser.git
+cd aintegrity-squad-optimiser
 npm ci
 ```
+
+### Run in development
+
+```bash
+npx expo start
+```
+
+Scan the QR code with Expo Go, or press `a` for Android emulator / `i` for iOS simulator.
 
 ### TypeScript check
 
@@ -44,11 +66,17 @@ npm ci
 npx tsc --noEmit
 ```
 
-### Run formal proofs
+---
+
+## Engine Verification
+
+The formal proof stack runs on every pull request to main. Both jobs must pass before merge.
+
+### Run proofs locally
 
 ```bash
 pip install z3-solver crosshair-tool pytest pytest-timeout hypothesis
-pytest tests/proofs/ -m proof -v
+pytest tests/proofs/ -m proof -v --timeout=60
 ```
 
 ```bash
@@ -57,65 +85,55 @@ dafny verify verification/dafny/budget_model.dfy
 dafny verify --boogie /proverOpt:O:smt.arith.solver=6 verification/dafny/gain_engine.dfy
 ```
 
----
-
-## Engine Architecture
-
-```
-OCR ingest → Zod validation
-→ geometric budget calculation
-→ efficiency multiplier composition  (maturity × efficiency class × metric weight × decay)
-→ per-metric gain integral           (exponential cost curve: C₀ × exp(m / K))
-→ CCI formula                        (floor(Σmetrics / totalAttributeCount))
-→ ceiling check                      (evaluateRuleSet against CeilingRule[])
-```
-
-The Python verification layer (`verification/engine_pure.py`) is a parallel re-expression of the same mathematics, formally compared against the TypeScript engine by Hypothesis differential tests on every PR.
-
-Full specification: [`SPEC.md`](./SPEC.md) on branch `claude/squad-optimiservp-BQH8C`.
-
----
-
-## Formal Verification
-
-30 safety properties are machine-checked on every pull request to main. A proof failure blocks the merge.
+### What is proved
 
 | Layer | Tool | Properties |
 |---|---|---|
-| Dafny machine-checked | Dafny 4.x + Z3 4.12.1 | P1–P6: budget geometry, gain loop bounds, MetricValue newtype |
-| Z3 SMT proofs | z3-solver | P7, P10–P15, P18–P19, P18-param, P19-param, P22: multiplier ordering, CCI monotonicity, ceiling bijection, variance non-negativity |
-| Crosshair symbolic | crosshair-tool | P5, P6, P8, P9, P16, P17, P20, P21: gain safety, decay safety, intervention monotonicity |
-| Hypothesis differential | Python + Node.js | 7 functions, 200 examples each, ε = 1e-10: Python spec vs TypeScript engine |
+| Dafny machine-checked | Dafny 4.x + Z3 | P1–P6: budget geometry, gain loop bounds |
+| Z3 SMT proofs | Z3 4.12.1 | P7, P10–P15, P18–P19: multiplier ordering, capacity index monotonicity, ceiling bijection |
+| Crosshair symbolic | Crosshair | P5, P6, P8, P9, P16, P17: gain safety, decay safety |
+| Hypothesis differential | Python + Node.js | Python spec vs TypeScript engine, ε = 1e-10, 200 × 7 functions |
+
+A proof failure means either a property was violated or a constant changed in a way that breaks a guaranteed bound. Neither is silenced — they are findings.
 
 ---
 
-## Calibration Policy
+## Calibration
 
-Every engine constant must be back-calculated from actual field observations (before/after metric readings from controlled interventions). Constants without empirical backing are labelled `⚠️ ASSUMED` and treated as placeholders.
+All engine constants live in `profiles/game_2025.json`. Each constant has a calibration status:
 
-All constants live in `profiles/logistics_v1.json`. Evidence is logged in `profiles/calibration_data.json`.
+| Status | Meaning |
+|---|---|
+| ✅ Confirmed | Back-calculated from ≥ 2 independent controlled observations |
+| ⚠️ Provisional | Back-calculated from a single observation; needs confirmation |
+| ⚠️ Assumed | No empirical basis; placeholder pending controlled data |
+
+When adding or changing any constant, record the evidence in `profiles/calibration_data.json`. The verification layer reads `game_2025.json` directly — a constant change that breaks a proof is a CI failure, not a merge blocker to paper over.
 
 ---
 
-## Project Structure
+## OTA Deployment
+
+```bash
+eas update --branch production --message "describe the change"
+```
+
+Builds are managed via EAS. Pushes to `main` trigger an automatic OTA update. **Never push directly to `main`** — use a branch and merge via PR so the proof gate runs first.
+
+---
+
+## Project Structure (top level)
 
 ```
 src/engine/          Core deterministic math — no React, no I/O
-src/logic/           OCR pipelines, Zod ingest boundary, orchestration
+src/logic/           OCR pipelines and orchestration
 src/services/        Database access layer (Drizzle ORM + expo-sqlite)
-src/types/           Canonical TypeScript interfaces
-profiles/            Calibrated constants + empirical observation log
+profiles/            Calibrated constants and empirical observation log
 verification/        Python proof spec layer and Dafny sources
 tests/proofs/        Formal proof test suite
 .github/workflows/   CI: proof gate (proofs.yml) + OTA (eas-update.yml)
-SPEC.md              Full function-level architecture reference (dev branch)
+LOGISTICS_SYSTEM_BLUEPRINT.md   Full architecture reference
 ```
-
----
-
-## Development
-
-All active work is on branch `claude/squad-optimiservp-BQH8C`. Never push directly to `main` — main triggers EAS OTA to production devices. All changes go to the branch above; merge via PR so the proof gate runs first.
 
 ---
 

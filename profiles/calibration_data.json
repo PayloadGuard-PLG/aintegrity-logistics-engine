@@ -1,0 +1,33 @@
+{
+  "_schema": "logistics-calibration-v1",
+  "_note": "Field observation log. Each entry must include before/after metric readings, asset profile, intervention type and count. 'source' must be a direct observation, not community data.",
+
+  "constants": {
+    "xpCostBase": {
+      "value": 2.94,
+      "confidence": "high",
+      "source": "transferred-from-source-domain",
+      "note": "Back-calculated from gain ratio in source calibration. Structural constant — recalibrate once first field data available."
+    },
+    "xpCostDecayK": {
+      "value": 47,
+      "confidence": "high",
+      "source": "transferred-from-source-domain",
+      "note": "CV 3.2% across 5 source-domain observations. Recalibrate from field data."
+    },
+    "baseXpPerSession": {
+      "value": null,
+      "confidence": "assumed",
+      "source": null,
+      "note": "MUST be back-calculated from first controlled field intervention. Formula: solve for bXPS where engine projection = observed metric gain for known cycleCount and asset profile."
+    },
+    "sessionBudgetDecay": {
+      "value": 0.99,
+      "confidence": "provisional",
+      "source": "transferred-from-source-domain",
+      "note": "Geometric shape confirmed in source domain. Decay constant may differ for logistics interventions."
+    }
+  },
+
+  "observations": []
+}

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/AIntegrity-Squad-Optimiser 2>/dev/null || exit 0; CHANGED=$(git diff HEAD --name-only 2>/dev/null | grep -E \"\\.(ts|tsx|json)$\" | grep -v -E \"^(DEVLOG|WHITEPAPER|HANDOVER|README)\" | wc -l | tr -d \" \"); STAGED=$(git diff --cached --name-only 2>/dev/null | grep -E \"\\.(ts|tsx|json)$\" | wc -l | tr -d \" \"); if [ \"$CHANGED\" -gt 0 ] || [ \"$STAGED\" -gt 0 ]; then echo \"{\\\"systemMessage\\\": \\\"DOCS REMINDER — uncommitted code changes detected. Before closing: update DEVLOG.md (sprint entry), HANDOVER.md (state + open items), WHITEPAPER.md (if engine changed), README.md (if features changed). Then branch + PR to main.\\\"}\"; fi",
+            "statusMessage": "Checking for uncommitted code changes..."
+          }
+        ]
+      }
+    ]
+  }
+}
