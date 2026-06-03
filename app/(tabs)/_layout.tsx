@@ -6,10 +6,10 @@ export default function TabLayout() {
       tabBar={() => null}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" />
+      <Tabs.Screen name="assets" />
       <Tabs.Screen name="plan" />
       <Tabs.Screen name="drills" />
-      <Tabs.Screen name="coaches" />
+      <Tabs.Screen name="investment" />
       <Tabs.Screen name="results" />
       <Tabs.Screen name="squad-plan" />
     </Tabs>
