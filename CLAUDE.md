@@ -9,10 +9,23 @@
 
 **Source repo:** Forked from `payloadguard-plg/aintegrity-squad-optimiser`. The engine mathematics and formal verification layer are carried over unchanged. All football-specific vocabulary has been replaced. Do not re-introduce any source-game IP.
 
-**Sprint 1 status (2026-06-03): MERGED TO MAIN. Both CI jobs green (z3-crosshair 2m 6s ✅, dafny 17s ✅).**
-- All football-derived symbol names renamed to domain-agnostic names throughout (see DEVLOG.md Sprint 1 for full mapping).
-- CI workflow files (`eas-update.yml`, `proofs.yml`) live on main.
-- Next sprint: new branch from main. Open items: field calibration, SPEC.md/CLAUDE.md terminology pass, domain vocabulary population.
+**Sprint 2 status (2026-06-03): IN PROGRESS — branch `claude/squad-optimiservp-BQH8C` has bug fixes + app.json. Merge to main when EAS build is confirmed working.**
+
+**Sprint 1 status (2026-06-03): MERGED. Both CI jobs green (z3-crosshair 2m 6s ✅, dafny 17s ✅). 30/30 proofs. Full domain-agnostic rename complete.**
+
+**EAS setup:**
+- Expo project: `d61de2f2-abc7-495e-a89a-03ee878db83b` (`@sdarkvader/aintegrity-logistics-engine`)
+- Android package: `com.payloadguard.logisticsengine`
+- Keystore: generated fresh (separate from squad optimiser)
+- `EXPO_TOKEN` secret: set in GitHub repo
+- OTA: merge to main → fires automatically
+
+**Bug fixes on branch (not yet on main):**
+- `app/(tabs)/_layout.tsx`: `assets`/`investment` tabs (were `index`/`coaches`)
+- `app/player/[id].tsx`: `PRIMARY`/`SECONDARY` stat columns (were `DEF`/`ATT`/`PHY`)
+- `app/coach/capture.tsx`: navigate to `/(tabs)/investment` (was `/coaches`)
+
+**Next session:** merge branch → install latest EAS build → verify app launches correctly → field calibration.
 
 ---
 

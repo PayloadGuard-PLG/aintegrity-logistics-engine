@@ -4,6 +4,50 @@ Reverse-chronological. Each entry covers what shipped, what broke, and what the 
 
 ---
 
+## Sprint 2 — EAS Setup + Runtime Bug Fixes
+**2026-06-03**
+
+Branch: `claude/squad-optimiservp-BQH8C` (merge pending)
+
+### Shipped
+
+**EAS / Expo project wired up**
+
+- New Expo project created: `d61de2f2-abc7-495e-a89a-03ee878db83b` under `@sdarkvader`
+- `app.json` updated with correct logistics engine identity:
+  - `name`: "AIntegrity Logistics Engine"
+  - `slug`: "aintegrity-logistics-engine"
+  - `scheme`: "logisticsengine"
+  - `android.package`: "com.payloadguard.logisticsengine"
+  - `projectId`: `d61de2f2-abc7-495e-a89a-03ee878db83b`
+- New Android keystore generated for logistics engine (separate from squad optimiser)
+- `EXPO_TOKEN` secret added to `payloadguard-plg/aintegrity-logistics-engine` GitHub repo
+- OTA pipeline confirmed green: merge to main → EAS update fires automatically
+
+**Runtime bug fixes (app/(tabs)/_layout.tsx, app/player/[id].tsx, app/coach/capture.tsx)**
+
+Three crashes from the tab rename that wasn't fully propagated:
+
+1. **Unmatched Route** — `_layout.tsx` registered `index`/`coaches` which no longer exist after Sprint 1 rename. Fixed to `assets`/`investment`.
+2. **Render crash** — `app/player/[id].tsx` iterated `['DEF', 'ATT', 'PHY']` and accessed `STAT_COLUMNS['DEF']` etc. which are `undefined` after rename. Fixed to `['PRIMARY', 'SECONDARY']`.
+3. **Navigation** — `app/coach/capture.tsx` pushed to `/(tabs)/coaches`. Fixed to `/(tabs)/investment`.
+
+### Known issues / post-session state
+
+- First EAS build of logistics engine used old `app.json` (submitted before `git pull`) → installed as "AIntegrity Squad Optimiser" / `com.payloadguard.squadoptimiser`, overwriting the squad optimiser install. Squad optimiser rebuild triggered to restore it.
+- Second EAS build (with correct `app.json` + new keystore) is in progress. Install this build — it will appear as "AIntegrity Logistics Engine" separate from squad optimiser.
+- Branch `claude/squad-optimiservp-BQH8C` has the three bug fixes and full `app.json` — merge to main to push OTA.
+
+### Open for next sprint
+
+- Field calibration: all constants in `profiles/logistics_v1.json` still `assumed`/`provisional`.
+- SPEC.md and CLAUDE.md terminology pass (OVR→CCI, stat→metric, etc.).
+- Domain vocabulary (`metricVocabulary`, asset classes, efficiency class labels) must be populated.
+- `app/player/[id].tsx` still uses football-era route name (`player/`) — consider renaming to `asset/`.
+- `app/coach/` still uses football-era route name — consider renaming to `investment/`.
+
+---
+
 ## Sprint 1 — Repo Scaffold + Domain-Agnostic Rename
 **2026-06-03**
 
