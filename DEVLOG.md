@@ -91,11 +91,16 @@ npx tsc --noEmit   → clean (0 errors)
 pytest tests/proofs/ -m proof -v   → 30/30 PASS
 ```
 
+### Merged
+
+PR merged to `main` on `payloadguard-plg/aintegrity-logistics-engine`. Both CI jobs green:
+- Engine Proofs / z3-crosshair — ✅ 2m 6s
+- Engine Proofs / dafny — ✅ 17s
+
 ### Open for next sprint
 
 - Field calibration: all constants in `profiles/logistics_v1.json` marked `assumed` or `provisional`. First controlled field observation needed to back-calculate `baseResourcesPerCycle`.
 - SPEC.md and CLAUDE.md terminology updates (OVR→CCI, stat→metric, drill→conditioning cycle throughout).
-- CI workflow files (`.github/workflows/`) require PAT with `workflow` scope to push — blocked until token is updated.
 - Domain vocabulary (`metricVocabulary`, asset classes, efficiency class labels) must be populated from actual deployment domain.
 
 ---

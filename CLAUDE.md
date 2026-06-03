@@ -9,10 +9,10 @@
 
 **Source repo:** Forked from `payloadguard-plg/aintegrity-squad-optimiser`. The engine mathematics and formal verification layer are carried over unchanged. All football-specific vocabulary has been replaced. Do not re-introduce any source-game IP.
 
-**Sprint 1 status (2026-06-03): COMPLETE — branch pushed, 30/30 proofs pass, `npx tsc --noEmit` clean.**
+**Sprint 1 status (2026-06-03): MERGED TO MAIN. Both CI jobs green (z3-crosshair 2m 6s ✅, dafny 17s ✅).**
 - All football-derived symbol names renamed to domain-agnostic names throughout (see DEVLOG.md Sprint 1 for full mapping).
-- CI workflow files (`eas-update.yml`, `proofs.yml`) are on the branch.
-- Next: SPEC.md and CLAUDE.md documentation terminology pass (OVR→CCI, stat→metric, etc.) — deferred to Sprint 2.
+- CI workflow files (`eas-update.yml`, `proofs.yml`) live on main.
+- Next sprint: new branch from main. Open items: field calibration, SPEC.md/CLAUDE.md terminology pass, domain vocabulary population.
 
 ---
 
