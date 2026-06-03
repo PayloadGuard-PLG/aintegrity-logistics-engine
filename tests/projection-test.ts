@@ -81,7 +81,7 @@ section('1. OVR formula  (floor of stat mean / qualityOvrDivisor)');
   const stats: Record<string, number> = {};
   for (let i = 0; i < 15; i++) stats[`S${i}`] = 90;
   const ovr = computeOvrWithPadding(stats, 90, profile);
-  const expected = Math.floor(90 / profile.qualityOvrDivisor);
+  const expected = Math.floor(90 / profile.cciDivisorScale);
   assert(`15 stats all 90 → OVR ${expected}`, ovr === expected);
 }
 
@@ -98,7 +98,7 @@ section('1. OVR formula  (floor of stat mean / qualityOvrDivisor)');
   for (let i = 0; i < 7; i++) stats[`S${i}`] = 120;
   const ovr = computeOvrWithPadding(stats, 100, profile);
   const qp = (7 * 120 + 8 * 100) / 15;
-  const expected = Math.floor(qp / profile.qualityOvrDivisor);
+  const expected = Math.floor(qp / profile.cciDivisorScale);
   assert(`Partial stats (7×120 pad 8×100) → OVR ${expected}`, ovr === expected);
 }
 
@@ -107,11 +107,11 @@ section('1. OVR formula  (floor of stat mean / qualityOvrDivisor)');
 section('2. Drill intensity multipliers');
 
 {
-  const ve   = profile.drillLevelMultipliers['Very Easy'];
-  const easy = profile.drillLevelMultipliers['Easy'];
-  const med  = profile.drillLevelMultipliers['Medium'];
-  const hard = profile.drillLevelMultipliers['Hard'];
-  const vh   = profile.drillLevelMultipliers['Very Hard'];
+  const ve   = profile.cycleIntensityMultipliers['Very Easy'];
+  const easy = profile.cycleIntensityMultipliers['Easy'];
+  const med  = profile.cycleIntensityMultipliers['Medium'];
+  const hard = profile.cycleIntensityMultipliers['Hard'];
+  const vh   = profile.cycleIntensityMultipliers['Very Hard'];
   assert(`VE (${ve}) < Easy (${easy})`,    ve   < easy);
   assert(`Easy (${easy}) < Med (${med})`,  easy < med);
   assert(`Med (${med}) < Hard (${hard})`,  med  < hard);

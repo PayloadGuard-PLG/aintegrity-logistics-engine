@@ -5,3 +5,6 @@ dist/
 .env
 .env.local
 players.json
+__pycache__/
+*.pyc
+*.pyo

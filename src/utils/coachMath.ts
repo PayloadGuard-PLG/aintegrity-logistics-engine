@@ -13,24 +13,24 @@ export function getStatXpCost(statValue: number, profile: GameProfile): number {
 
 /**
  * Returns the grey (non-white) XP multiplier from the profile.
- * White stats use 1.0; grey stats use profile.greyWeightMultiplier (0.5).
+ * White stats use 1.0; grey stats use profile.secondaryMetricWeight (0.5).
  */
 export function getGreyMultiplier(isWhite: boolean, profile: GameProfile): number {
-  return isWhite ? 1.0 : profile.greyWeightMultiplier;
+  return isWhite ? 1.0 : profile.secondaryMetricWeight;
 }
 
 /**
  * Returns the drill level multiplier from the profile.
  */
 export function getDrillLevelMult(drillLevel: DrillLevel, profile: GameProfile): number {
-  return profile.drillLevelMultipliers[drillLevel] ?? 1.0;
+  return profile.cycleIntensityMultipliers[drillLevel] ?? 1.0;
 }
 
 /**
  * Returns the talent multiplier from the profile.
  */
 export function getTalentMult(talent: TalentTier, profile: GameProfile): number {
-  return profile.talentMultipliers[talent] ?? 1.0;
+  return profile.efficiencyClassMultipliers[talent] ?? 1.0;
 }
 
 // ---------------------------------------------------------------------------

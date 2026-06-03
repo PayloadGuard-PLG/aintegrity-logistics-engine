@@ -22,9 +22,9 @@ import { DRILL_LIST } from '../../src/database/drillDatabase';
 const profile = gameProfileJson as unknown as GameProfile;
 const TALENT_LABEL: Record<TalentTier, string> = { Fastest: '×1.5', Fast: '×1.25', Average: '×1.1', Normal: '×1.0', Slow: '×0.7' };
 const TIER_ORDER: TierName[] = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
-const TIER_COSTS: Record<TierName, number> = profile.tierPointsRequired as Record<TierName, number>;
-const TIER_ADDITIONS: Record<TierName, number> = profile.tierAttrAdditions as Record<TierName, number>;
-const CONDITION_PER_RESTORER: number = profile.conditionPerRestorer;
+const TIER_COSTS: Record<TierName, number> = profile.stagePointsRequired as Record<TierName, number>;
+const TIER_ADDITIONS: Record<TierName, number> = profile.stageMetricAdditions as Record<TierName, number>;
+const CONDITION_PER_RESTORER: number = profile.readinessPerRestoration;
 const CONDITION_PER_RECOVERY = 25;
 
 const DRILL_AMBER = '#D97706';
@@ -120,16 +120,16 @@ export default function ResultsScreen() {
       for (const drillName of plan.drillNames) {
         const drill = DRILL_LIST.find(d => d.name === drillName);
         if (!drill) continue;
-        const drillMult = (profile.drillLevelMultipliers as Record<string, number>)[drill.intensity] ?? 1.0;
-        const budget = plan.cycles * profile.baseXpPerSession * (profile.drillXpFactor ?? 1.0) / drill.stats.length;
+        const drillMult = (profile.cycleIntensityMultipliers as Record<string, number>)[drill.intensity] ?? 1.0;
+        const budget = plan.cycles * profile.baseResourcesPerCycle * (profile.conditioningResourceFactor ?? 1.0) / drill.stats.length;
         for (const stat of drill.stats) {
           const from = currentStats[stat];
           if (from === undefined) continue;
           const isWhite = isWhiteStat(player.role, stat);
-          const starsGained = Math.floor((currentOvr - ovrBase) / (profile.starOvrThreshold ?? 20));
+          const starsGained = Math.floor((currentOvr - ovrBase) / (profile.thresholdCciIncrement ?? 20));
           const gain = estimateStatGainPct(budget, from, player.age, starsGained, player.talent, isWhite, twoxAd, drillMult, profile);
           if (gain > 0) {
-            currentStats[stat] = Math.min(from + gain, profile.statCap);
+            currentStats[stat] = Math.min(from + gain, profile.metricCap);
             gainParts.push(`${stat} +${gain.toFixed(1)}`);
           }
         }
@@ -151,17 +151,17 @@ export default function ResultsScreen() {
       const entry = coachHistory.find(e => e.id === coachId);
       if (!entry || entry.stats.length === 0 || entry.sessions === 0) continue;
       const drillMult = 1.0;
-      const budget = entry.sessions * profile.baseXpPerSession / entry.stats.length;
+      const budget = entry.sessions * profile.baseResourcesPerCycle / entry.stats.length;
       const gainParts: string[] = [];
 
       for (const stat of entry.stats) {
         const from = currentStats[stat];
         if (from === undefined) continue;
         const isWhite = isWhiteStat(player.role, stat);
-        const starsGained = Math.floor((currentOvr - ovrBase) / (profile.starOvrThreshold ?? 20));
+        const starsGained = Math.floor((currentOvr - ovrBase) / (profile.thresholdCciIncrement ?? 20));
         const gain = estimateStatGainPct(budget, from, player.age, starsGained, player.talent, isWhite, twoxAd, drillMult, profile);
         if (gain > 0) {
-          currentStats[stat] = Math.min(from + gain, profile.statCap);
+          currentStats[stat] = Math.min(from + gain, profile.metricCap);
           gainParts.push(`${stat} +${gain.toFixed(1)}`);
         }
       }
@@ -218,7 +218,7 @@ export default function ResultsScreen() {
       const levels = parseInt(levelsPromoted, 10) || 1;
       const afterDecay = projectSeasonDecay(currentStats, levels, profile);
       const ovrAfter = Number(computeOvrWithPadding(afterDecay, player.overall, profile).toFixed(1));
-      const dropPerStat = levels * (profile.seasonDecayPerLevel ?? 20);
+      const dropPerStat = levels * (profile.periodicDegradationPerStage ?? 20);
       steps.push({
         label: `SEASON RESET · ${levels > 0 ? `PROMOTED +${levels}` : levels < 0 ? `RELEGATED ${levels}` : 'STAYED'}`,
         ovrBefore: currentOvr,
@@ -505,7 +505,7 @@ export default function ResultsScreen() {
                     style={{ fontFamily: theme.mono, fontSize: 22, fontWeight: '700', color: theme.neg, borderWidth: 1, borderColor: theme.neg + '66', padding: 8, textAlign: 'center', marginBottom: 8 }}
                   />
                   <MonoLabel size={8} color={theme.inkGhost}>
-                    {`EACH STAT −${(parseInt(levelsPromoted, 10) || 1) * (profile.seasonDecayPerLevel ?? 20)} PTS · WHITE AND GREY ALIKE · APPLIES LAST`}
+                    {`EACH STAT −${(parseInt(levelsPromoted, 10) || 1) * (profile.periodicDegradationPerStage ?? 20)} PTS · WHITE AND GREY ALIKE · APPLIES LAST`}
                   </MonoLabel>
                 </View>
               )}

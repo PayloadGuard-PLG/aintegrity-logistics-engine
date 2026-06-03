@@ -26,9 +26,9 @@ const TALENT_INFO = 'Training rate multiplier — how quickly this player gains 
 const DRILL_LEVELS: DrillLevel[] = ['Very Easy', 'Easy', 'Medium', 'Hard', 'Very Hard'];
 const TIER_ORDER: TierName[] = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'];
 const _profile = gameProfile as unknown as GameProfile;
-const TIER_ADDITIONS: Record<TierName, number> = _profile.tierAttrAdditions as Record<TierName, number>;
-const TIER_INCREMENTS: Record<TierName, number> = _profile.tierIncrements as Record<TierName, number>;
-const TIER_COSTS: Record<TierName, number> = _profile.tierPointsRequired as Record<TierName, number>;
+const TIER_ADDITIONS: Record<TierName, number> = _profile.stageMetricAdditions as Record<TierName, number>;
+const TIER_INCREMENTS: Record<TierName, number> = _profile.stageMetricIncrements as Record<TierName, number>;
+const TIER_COSTS: Record<TierName, number> = _profile.stagePointsRequired as Record<TierName, number>;
 const DRILL_NAMES = DRILL_LIST.map(d => d.name);
 
 function drillTypeColor(name: string, t: typeof theme): string {

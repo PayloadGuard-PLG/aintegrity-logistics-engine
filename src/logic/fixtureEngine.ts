@@ -14,14 +14,14 @@ export function calculateTeamPlayPlan(
   matchAdvisorActive: boolean,
   profile: GameProfile
 ): TeamPlayPlan {
-  const freeDrillsNeeded = matchAdvisorActive ? 0 : profile.teamPlayFreeDrillsPerDay;
+  const freeDrillsNeeded = matchAdvisorActive ? 0 : profile.freeCyclesPerDay;
   const matchAdvisorCoversDecay = matchAdvisorActive;
   const recommendation = matchAdvisorActive
     ? 'Match Advisor active — all drill sessions advance team play. No separate maintenance drills needed.'
-    : `Watch ${profile.teamPlayFreeDrillsPerDay} Reward Channel videos daily to run free team play drills and offset the ${profile.teamPlayDecayPerDay}-point daily decay per pillar.`;
+    : `Watch ${profile.freeCyclesPerDay} Reward Channel videos daily to run free team play drills and offset the ${profile.coordinationDecayPerDay}-point daily decay per pillar.`;
   return {
     pillars,
-    decayPerDay: profile.teamPlayDecayPerDay,
+    decayPerDay: profile.coordinationDecayPerDay,
     freeDrillsNeeded,
     matchAdvisorCoversDecay,
     recommendation,
@@ -34,14 +34,14 @@ export function calculateRestorersBridge(
   profile: GameProfile
 ): GreensBridgeSuggestion {
   // condition cost per drill at Very Easy + Fan Club L0 (reference scenario for restorer bridge)
-  const costPerDrill = profile.baseLossPerDrill
-    * (profile.condLevelMultipliers?.['Very Easy'] ?? 1)
-    * (1 - (profile.fanClubCondReduction?.[0] ?? 0.1));
-  const cyclesPerRestorer = costPerDrill > 0 ? Math.floor(profile.conditionPerRestorer / costPerDrill) : 0;
+  const costPerDrill = profile.baseDrainPerCycle
+    * (profile.intensityMultipliers?.['Very Easy'] ?? 1)
+    * (1 - (profile.supportDrainReduction?.[0] ?? 0.1));
+  const cyclesPerRestorer = costPerDrill > 0 ? Math.floor(profile.readinessPerRestoration / costPerDrill) : 0;
   const additionalCycles = availableRestorers * cyclesPerRestorer;
   const worthwhile = additionalCycles > 0 && naturalCycles > 0;
   const note = worthwhile
-    ? `${availableRestorers} restorer${availableRestorers !== 1 ? 's' : ''} → +${additionalCycles} extra drills (${cyclesPerRestorer} per restorer · ${profile.conditionPerRestorer}% restored / ${costPerDrill.toFixed(3)}% per drill at Very Easy)`
+    ? `${availableRestorers} restorer${availableRestorers !== 1 ? 's' : ''} → +${additionalCycles} extra drills (${cyclesPerRestorer} per restorer · ${profile.readinessPerRestoration}% restored / ${costPerDrill.toFixed(3)}% per drill at Very Easy)`
     : availableRestorers === 0
       ? 'No restorers available — bridge not possible.'
       : 'Set fixture window to evaluate bridge value.';

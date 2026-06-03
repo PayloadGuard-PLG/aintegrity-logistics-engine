@@ -21,7 +21,7 @@ export function predictCustomDrill(
   targetSkillIsWhite: boolean,
   profile: GameProfile
 ) {
-  const xpBudget = sessions * profile.baseXpPerSession * coachMultiplier;
+  const xpBudget = sessions * profile.baseResourcesPerCycle * coachMultiplier;
   const totalGain = estimateStatGainPct(
     xpBudget,
     player.statValue,

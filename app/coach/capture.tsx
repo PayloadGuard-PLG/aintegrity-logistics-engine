@@ -188,8 +188,8 @@ export default function CoachCaptureScreen() {
       const lo = parseFloat(g.lo);
       const hi = parseFloat(g.hi);
       const cur = baseStats[stat] ?? 0;
-      if (!isNaN(lo)) boostedLo[stat] = Math.min(cur + lo, profile.statCap);
-      if (!isNaN(hi)) boostedHi[stat] = Math.min(cur + hi, profile.statCap);
+      if (!isNaN(lo)) boostedLo[stat] = Math.min(cur + lo, profile.metricCap);
+      if (!isNaN(hi)) boostedHi[stat] = Math.min(cur + hi, profile.metricCap);
     }
 
     const loOvr = computeOvrWithPadding(boostedLo, ovrBefore, profile);

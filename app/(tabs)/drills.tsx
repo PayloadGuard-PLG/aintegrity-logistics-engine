@@ -131,8 +131,8 @@ export default function DrillsScreen() {
       for (const drillName of preset.drillNames) {
         const drill = DRILL_LIST.find(d => d.name === drillName);
         if (!drill) continue;
-        const drillMult = (profile.drillLevelMultipliers as Record<string, number>)[drill.intensity] ?? 1.0;
-        const budget = cycles * profile.baseXpPerSession * (profile.drillXpFactor ?? 1.0) / drill.stats.length;
+        const drillMult = (profile.cycleIntensityMultipliers as Record<string, number>)[drill.intensity] ?? 1.0;
+        const budget = cycles * profile.baseResourcesPerCycle * (profile.conditioningResourceFactor ?? 1.0) / drill.stats.length;
 
         for (const stat of drill.stats) {
           const from = currentStats[stat];
@@ -140,7 +140,7 @@ export default function DrillsScreen() {
           const isWhite = isWhiteStat(selectedPlayer.role, stat);
           const gain = estimateStatGainPct(budget, from, selectedPlayer.age, 0, selectedPlayer.talent, isWhite, false, drillMult, profile);
           if (!gainMap[stat]) gainMap[stat] = { from: selectedPlayer.stats[stat] ?? from, total: 0, isWhite };
-          currentStats[stat] = Math.min(from + gain, profile.statCap);
+          currentStats[stat] = Math.min(from + gain, profile.metricCap);
           gainMap[stat].total += gain;
         }
       }
