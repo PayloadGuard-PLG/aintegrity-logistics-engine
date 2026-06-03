@@ -4,10 +4,15 @@
 
 ## For the Next Claude — Read This First
 
-**Active branch:** `claude/squad-optimiservp-BQH8C`
+**Active branch:** `claude/squad-optimiservp-BQH8C`  ← pushed to `payloadguard-plg/aintegrity-logistics-engine`
 **Never push to main directly** — main triggers EAS OTA to production devices. All work goes to the branch above; user merges via PR.
 
 **Source repo:** Forked from `payloadguard-plg/aintegrity-squad-optimiser`. The engine mathematics and formal verification layer are carried over unchanged. All football-specific vocabulary has been replaced. Do not re-introduce any source-game IP.
+
+**Sprint 1 status (2026-06-03): COMPLETE — branch pushed, 30/30 proofs pass, `npx tsc --noEmit` clean.**
+- All football-derived symbol names renamed to domain-agnostic names throughout (see DEVLOG.md Sprint 1 for full mapping).
+- CI workflow files (`eas-update.yml`, `proofs.yml`) are on the branch.
+- Next: SPEC.md and CLAUDE.md documentation terminology pass (OVR→CCI, stat→metric, etc.) — deferred to Sprint 2.
 
 ---
 
@@ -68,18 +73,18 @@ dafny verify --boogie /proverOpt:O:smt.arith.solver=6 verification/dafny/gain_en
 
 Every engine constant must be back-calculated from actual field observations (before/after metric readings from controlled interventions). If there is no empirical field observation backing a value, it is ASSUMED and must be labelled as such.
 
-**Current status of all constants:**
+**Current status of all constants (new key names — see `profiles/logistics_v1.json`):**
 
-| Constant | Value | Status | Evidence |
+| Constant (new name) | Value | Status | Evidence |
 |---|---|---|---|
-| xpCostBase (C₀) | 2.94 | ✅ Transferred (high) | Back-calculated in source domain (CV 3.2%). Structural constant — domain-agnostic. |
-| xpCostDecayK (K) | 47 | ✅ Transferred (high) | CV 3.2% across 5 source observations. Recalibrate from field data. |
-| baseXpPerSession | 676 | ⚠️ ASSUMED | Placeholder. Back-calculate from first controlled field observation. |
-| sessionBudgetDecay | 0.99 | ⚠️ Provisional | Geometric shape confirmed in source domain. Recalibrate from repeated-intervention data. |
-| greyWeightMultiplier | 0.22 | ⚠️ ASSUMED | Placeholder secondary metric cost penalty. |
-| maxBaseOvr (ceiling) | 180 | ⚠️ ASSUMED | Placeholder — replace with domain-specific CeilingRule[] (Phase B). |
-| ageTable | see profile | ⚠️ ASSUMED | Maturity table placeholder — calibrate from asset age cohort data. |
-| talentMultipliers | Class-A/Standard/Degraded | ⚠️ ASSUMED | Efficiency class multipliers — calibrate from asset spec data. |
+| `costCurveBase` (C₀) | 2.94 | ✅ Transferred (high) | Back-calculated in source domain (CV 3.2%). Structural constant — domain-agnostic. |
+| `costCurveDecay` (K) | 47 | ✅ Transferred (high) | CV 3.2% across 5 source observations. Recalibrate from field data. |
+| `baseResourcesPerCycle` | 676 | ⚠️ ASSUMED | Placeholder. Back-calculate from first controlled field observation. |
+| `cycleBudgetDecay` | 0.99 | ⚠️ Provisional | Geometric shape confirmed in source domain. Recalibrate from repeated-intervention data. |
+| `secondaryMetricWeight` | 0.22 | ⚠️ ASSUMED | Placeholder secondary metric cost penalty. |
+| `capacityCeiling` | 180 | ⚠️ ASSUMED | Placeholder — replace with domain-specific CeilingRule[] (Phase B). |
+| `maturityMultipliers` | see profile | ⚠️ ASSUMED | Maturity table placeholder — calibrate from asset age cohort data. |
+| `efficiencyClassMultipliers` | Class-A/Standard/Degraded | ⚠️ ASSUMED | Efficiency class multipliers — calibrate from asset spec data. |
 
 **When adding or changing any constant:** record the field observation in `profiles/calibration_data.json` and update the table above.
 
@@ -92,7 +97,7 @@ The engine is a linear, deterministic pipeline of pure functions in `src/engine/
 ```
 geometric budget calculation
 → efficiency multiplier composition
-→ per-metric gain integral (statGainFromBudget)
+→ per-metric gain integral (metricGainFromBudget)
 → composite capacity index formula
 → ceiling check (evaluateRuleSet)
 ```
@@ -115,27 +120,6 @@ Full specification: `SYSTEM_BLUEPRINT.md`
 | B5 | getConstantMeta() accessor + load_constant_meta() Python mirror | ✅ DONE |
 
 **Current proof count: 30/30 pass** (8 Crosshair + 7 equivalence + 15 Z3)
-
-## CI Workflow Blocker
-
-`.github/workflows/eas-update.yml` and `.github/workflows/proofs.yml` exist locally but could
-not be pushed — the PAT used lacked the `workflow` scope.
-
-**To push them:** update the PAT at GitHub → Settings → Developer settings → Personal access
-tokens → edit token → tick `workflow` → regenerate. Then from Termux:
-
-```bash
-cd aintegrity-logistics-engine
-git fetch origin
-git checkout claude/squad-optimiservp-BQH8C
-# add the two workflow files manually or copy them, then:
-git add .github/
-git commit -m "Add CI workflows (eas-update + proofs)"
-git push -u origin claude/squad-optimiservp-BQH8C
-```
-
-The file contents are in the local container at
-`/home/user/logistics-engine/.github/workflows/`.
 
 ---
 
