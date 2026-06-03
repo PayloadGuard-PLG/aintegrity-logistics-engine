@@ -29,9 +29,9 @@ Given a pool of tracked assets, a set of proposed investment cycles, and a calib
 
 ## Architecture in One Paragraph
 
-The engine is a linear, deterministic pipeline of pure functions in `src/engine/engineMath.ts`. It reads calibrated constants from `profiles/game_2025.json` at module load time. Data enters via ML Kit OCR, is validated, and flows through: geometric budget calculation → efficiency multiplier composition → per-metric gain integral → composite capacity index formula → ceiling check. The Python verification layer (`verification/engine_pure.py`) is a parallel re-expression of the same mathematics, formally compared against the TypeScript engine by Hypothesis differential tests on every PR.
+The engine is a linear, deterministic pipeline of pure functions in `src/engine/engineMath.ts`. It reads calibrated constants from `profiles/logistics_v1.json` at module load time. Data enters via ML Kit OCR, is validated, and flows through: geometric budget calculation → efficiency multiplier composition → per-metric gain integral → composite capacity index formula → ceiling check. The Python verification layer (`verification/engine_pure.py`) is a parallel re-expression of the same mathematics, formally compared against the TypeScript engine by Hypothesis differential tests on every PR.
 
-Full specification: [`LOGISTICS_SYSTEM_BLUEPRINT.md`](./LOGISTICS_SYSTEM_BLUEPRINT.md)
+Full specification: [`SYSTEM_BLUEPRINT.md`](./SYSTEM_BLUEPRINT.md) · [`SPEC.md`](./SPEC.md)
 
 ---
 
@@ -47,8 +47,9 @@ Full specification: [`LOGISTICS_SYSTEM_BLUEPRINT.md`](./LOGISTICS_SYSTEM_BLUEPRI
 ### Install
 
 ```bash
-git clone https://github.com/PayloadGuard-PLG/aintegrity-squad-optimiser.git
-cd aintegrity-squad-optimiser
+git clone https://github.com/PayloadGuard-PLG/aintegrity-logistics-engine.git
+cd aintegrity-logistics-engine
+git checkout claude/squad-optimiservp-BQH8C
 npm ci
 ```
 
@@ -89,9 +90,9 @@ dafny verify --boogie /proverOpt:O:smt.arith.solver=6 verification/dafny/gain_en
 
 | Layer | Tool | Properties |
 |---|---|---|
-| Dafny machine-checked | Dafny 4.x + Z3 | P1–P6: budget geometry, gain loop bounds |
-| Z3 SMT proofs | Z3 4.12.1 | P7, P10–P15, P18–P19: multiplier ordering, capacity index monotonicity, ceiling bijection |
-| Crosshair symbolic | Crosshair | P5, P6, P8, P9, P16, P17: gain safety, decay safety |
+| Dafny machine-checked | Dafny 4.x + Z3 | P1–P6: budget geometry, gain loop bounds, MetricValue newtype |
+| Z3 SMT proofs | z3-solver | P7, P10–P15, P18–P19, P18-param, P19-param, P22: multiplier ordering, CCI monotonicity, ceiling bijection, variance non-negativity |
+| Crosshair symbolic | crosshair-tool | P5, P6, P8, P9, P16, P17, P20, P21: gain safety, decay safety, intervention monotonicity |
 | Hypothesis differential | Python + Node.js | Python spec vs TypeScript engine, ε = 1e-10, 200 × 7 functions |
 
 A proof failure means either a property was violated or a constant changed in a way that breaks a guaranteed bound. Neither is silenced — they are findings.
@@ -100,7 +101,7 @@ A proof failure means either a property was violated or a constant changed in a 
 
 ## Calibration
 
-All engine constants live in `profiles/game_2025.json`. Each constant has a calibration status:
+All engine constants live in `profiles/logistics_v1.json`. Each constant has a calibration status:
 
 | Status | Meaning |
 |---|---|
@@ -132,7 +133,8 @@ profiles/            Calibrated constants and empirical observation log
 verification/        Python proof spec layer and Dafny sources
 tests/proofs/        Formal proof test suite
 .github/workflows/   CI: proof gate (proofs.yml) + OTA (eas-update.yml)
-LOGISTICS_SYSTEM_BLUEPRINT.md   Full architecture reference
+SYSTEM_BLUEPRINT.md  Full system architecture reference
+SPEC.md              Full function-level specification
 ```
 
 ---
