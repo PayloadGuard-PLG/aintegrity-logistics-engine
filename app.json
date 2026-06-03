@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AIntegrity Logistics Engine",
-    "slug": "logistics-engine",
+    "slug": "aintegrity-logistics-engine",
     "scheme": "logisticsengine",
     "version": "1.0.0",
     "newArchEnabled": false,
