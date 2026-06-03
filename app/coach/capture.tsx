@@ -480,7 +480,7 @@ export default function CoachCaptureScreen() {
             </Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push({ pathname: '/(tabs)/coaches', params: { playerId: selectedPlayerId ?? '', sessions: multiplier } } as any)}
+            onPress={() => router.push({ pathname: '/(tabs)/investment', params: { playerId: selectedPlayerId ?? '', sessions: multiplier } } as any)}
             style={{ borderWidth: 1, borderColor: theme.ink, padding: 14, alignItems: 'center', backgroundColor: theme.surface2 }}>
             <Text style={{ fontFamily: theme.mono, fontSize: 11, letterSpacing: 2, color: theme.ink, fontWeight: '700' }}>
               ▶ PROJECT

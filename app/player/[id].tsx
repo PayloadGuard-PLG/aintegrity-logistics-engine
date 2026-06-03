@@ -394,12 +394,12 @@ export default function EditPlayerScreen() {
           </View>
         )}
 
-        {/* STATS GRID — DEF / ATT / PHY */}
+        {/* STATS GRID — PRIMARY / SECONDARY */}
         {selectedRoles.length > 0 && (
           <>
             <MonoLabel color={theme.steelLight} style={{ marginBottom: 8 }}>STATS</MonoLabel>
             <View style={{ flexDirection: 'row', gap: 4, marginBottom: 24 }}>
-              {(['DEF', 'ATT', 'PHY'] as const).map(col => {
+              {(['PRIMARY', 'SECONDARY'] as const).map(col => {
                 const cc = COL_COLORS[col];
                 const colStats = STAT_COLUMNS[col].filter(s => (statList as readonly string[]).includes(s));
                 if (colStats.length === 0) return null;
