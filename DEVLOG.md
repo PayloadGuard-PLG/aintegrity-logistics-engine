@@ -1,8 +1,102 @@
-# Squad Optimiser — Dev Log
-
-> **Read before every session:** [`ASSUMPTIONS.md`](./ASSUMPTIONS.md) — Steve's standing rule. Assumption is the mother of all fuck ups. Ask. Don't guess.
+# AIntegrity Logistics Engine — Dev Log
 
 Reverse-chronological. Each entry covers what shipped, what broke, and what the next sprint targets.
+
+---
+
+## Sprint 1 — Repo Scaffold + Domain-Agnostic Rename
+**2026-06-03**
+
+Branch: `claude/squad-optimiservp-BQH8C`
+
+### Shipped
+
+**Phase A: Repo scaffold (from `payloadguard-plg/aintegrity-squad-optimiser`)**
+
+- Cloned source repo, removed football remote, created logistics remote at `payloadguard-plg/aintegrity-logistics-engine`
+- Renamed profile: `profiles/game_2025.json` → `profiles/logistics_v1.json` with all `_meta` provenance siblings added
+- Replaced `src/types/resources.ts` — football types replaced with logistics types (`Asset`, `DomainProfile`, `EfficiencyClass`, `StageName`, `ConstantMeta`, etc.)
+- Renamed modules throughout: `coachScanner` → `documentScanner`, `playerScanner` → `assetProfileScanner`, `coachPipeline` → `investmentPipeline`, `playerService` → `assetService`, `roleWeights` → `metricWeights`, `coaches.tsx` → `investment.tsx`, `index.tsx` → `assets.tsx`
+- Written new `CLAUDE.md` for the logistics context
+
+**Phase B: Six architectural changes**
+
+| Problem | Change |
+|---|---|
+| B1 | `DynamicsModel` interface — `src/engine/dynamicsModel.ts` |
+| B2 | `applyIntervention` Stage 11 + P20/P21 Crosshair contracts |
+| B3 | `evaluateRuleSet` / `CeilingRule` + P18-param/P19-param Z3 proofs |
+| B6 | Zod ingest boundary — `src/logic/investmentPipelineSchema.ts` + Dafny `MetricValue` newtype |
+| B4 | `propagateUncertainty` / `ProjectionBand` + P22 Z3 proof |
+| B5 | `getConstantMeta()` / `load_constant_meta()` provenance accessor |
+
+Proof count reached **30/30** (8 Crosshair + 7 Hypothesis equivalence + 15 Z3).
+
+**Domain-agnostic naming — complete rename of all public symbols**
+
+All football-derived names replaced throughout the full stack:
+
+| Old name | New name |
+|---|---|
+| `xpCostBase` / `C0` | `costCurveBase` / `COST_CURVE_BASE` |
+| `xpCostDecayK` / `K` | `costCurveDecay` / `COST_CURVE_DECAY` |
+| `baseXpPerSession` / `BASE_XPS` | `baseResourcesPerCycle` / `BASE_RESOURCES_PER_CYCLE` |
+| `sessionBudgetDecay` | `cycleBudgetDecay` / `CYCLE_BUDGET_DECAY` |
+| `greyWeightMultiplier` / `GREY_MULT` | `secondaryMetricWeight` / `SECONDARY_METRIC_WEIGHT` |
+| `ageTable` / `AGE_TABLE` | `maturityMultipliers` / `MATURITY_MULTS` |
+| `talentMultipliers` / `TALENT_MULTS` | `efficiencyClassMultipliers` / `EFFICIENCY_CLASS_MULTS` |
+| `maxBaseOvr` / `MAX_BASE_OVR` | `capacityCeiling` / `CAPACITY_CEILING` |
+| `starDecayPerSession` / `STAR_DECAY` | `thresholdDecayFactor` / `THRESHOLD_DECAY_FACTOR` |
+| `starOvrThreshold` / `STAR_OVR_THRESHOLD` | `thresholdCciIncrement` / `THRESHOLD_CCI_INCREMENT` |
+| `twoxAdMultiplier` / `TWOX_AD_MULT` | `boostMultiplier` / `BOOST_MULTIPLIER` |
+| `totalAttributeCount` / `TOTAL_ATTRS` | `metricCount` / `METRIC_COUNT` |
+| `qualityOvrDivisor` / `OVR_DIVISOR` | `cciDivisorScale` / `CCI_DIVISOR_SCALE` |
+| `tierAttrAdditions` / `TIER_ADDITIONS` | `stageMetricAdditions` / `STAGE_METRIC_ADDITIONS` |
+| `statCap` / `STAT_CAP` | `metricCap` / `METRIC_CAP` |
+| `condLevelMultipliers` / `COND_LEVEL_MULTS` | `intensityMultipliers` / `INTENSITY_MULTS` |
+| `fanClubCondReduction` / `FAN_COND_REDUCTION` | `supportDrainReduction` / `SUPPORT_DRAIN_REDUCTION` |
+| `baseLossPerDrill` / `BASE_LOSS_PER_DRILL` | `baseDrainPerCycle` / `BASE_DRAIN_PER_CYCLE` |
+| `conditionPerRestorer` / `CONDITION_PER_RESTORER` | `readinessPerRestoration` / `READINESS_PER_RESTORATION` |
+| `seasonDecayPerLevel` / `SEASON_DECAY` | `periodicDegradationPerStage` / `PERIODIC_DEGRADATION` |
+| `drillXpFactor` / `DRILL_XP_FACTOR` | `conditioningResourceFactor` / `CONDITIONING_RESOURCE_FACTOR` |
+| `drillLevelMultipliers` | `cycleIntensityMultipliers` |
+| `xp_cost_at_stat(stat)` | `cost_at_metric(metric)` |
+| `age_multiplier(age)` | `maturity_multiplier(maturity_index)` |
+| `talent_multiplier(talent)` | `efficiency_class_multiplier(efficiency_class)` |
+| `grey_multiplier(is_white)` | `metric_weight_multiplier(is_primary)` |
+| `stars_gained_from_ovr_gain(...)` | `thresholds_crossed_from_cci_gain(...)` |
+| `star_decay_multiplier(stars_gained)` | `threshold_decay_multiplier(thresholds_crossed)` |
+| `coach_budget_per_stat(sessions, ...)` | `investment_budget_per_metric(cycles, ...)` |
+| `stat_gain_from_budget(start_stat, ...)` | `metric_gain_from_budget(start_metric, ...)` |
+| `ovr_from_stats(stat_values)` | `cci_from_metrics(metric_values)` |
+| `apply_season_decay(...)` | `apply_periodic_degradation(...)` |
+| `is_training_locked(base_ovr)` | `is_investment_locked(base_cci)` |
+| `condition_drain_pct(drill_intensity, fan_level)` | `readiness_drain_pct(cycle_intensity, support_level)` |
+| `talent_ordering_holds()` | `efficiency_class_ordering_holds()` |
+| `grey_lt_white()` | `secondary_lt_primary()` |
+| `age_multipliers_non_increasing()` | `maturity_multipliers_non_increasing()` |
+| `coachBudgetPerStat` (TS bridge) | `investmentBudgetPerMetric` |
+| `statGainFromBudget` (TS bridge) | `metricGainFromBudget` |
+| `ovrFromStats` (TS bridge) | `cciFromMetrics` |
+| `applySeasonDecay` (TS bridge) | `applyPeriodicDegradation` |
+| `isTrainingLocked` (TS bridge) | `isInvestmentLocked` |
+| `conditionDrainPct` (TS bridge) | `readinessDrainPct` |
+
+**Files changed:** `profiles/logistics_v1.json`, `src/engine/engineConstants.ts`, `src/engine/engineMath.ts`, `src/types/resources.ts`, `src/logic/xpEngine.ts`, `src/logic/ovrProjector.ts`, `app/(tabs)/investment.tsx`, `src/logic/investmentPipeline.ts`, `verification/constants_pure.py`, `verification/engine_pure.py`, `verification/multipliers_pure.py`, `verification/crosshair_contracts.py`, `tests/proofs/test_z3_properties.py`, `tests/proofs/test_ts_equivalence.py`, `tests/proofs/test_crosshair_contracts.py`, `verification/run_ts.ts`
+
+### Verification
+
+```
+npx tsc --noEmit   → clean (0 errors)
+pytest tests/proofs/ -m proof -v   → 30/30 PASS
+```
+
+### Open for next sprint
+
+- Field calibration: all constants in `profiles/logistics_v1.json` marked `assumed` or `provisional`. First controlled field observation needed to back-calculate `baseResourcesPerCycle`.
+- SPEC.md and CLAUDE.md terminology updates (OVR→CCI, stat→metric, drill→conditioning cycle throughout).
+- CI workflow files (`.github/workflows/`) require PAT with `workflow` scope to push — blocked until token is updated.
+- Domain vocabulary (`metricVocabulary`, asset classes, efficiency class labels) must be populated from actual deployment domain.
 
 ---
 

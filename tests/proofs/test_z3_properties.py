@@ -1,8 +1,8 @@
 # tests/proofs/test_z3_properties.py
 #
-# Z3 SMT safety proofs for the Squad Optimiser engine.
+# Z3 SMT safety proofs for the logistics engine.
 # Thirteen named properties covering multiplier ordering, budget relationships,
-# OVR formula properties, and training lock correctness.
+# CCI formula properties, and investment lock correctness.
 #
 # Each proof encodes the NEGATION of the desired property and asks Z3 to find
 # a counterexample. `unsat` means no counterexample exists → property holds universally.
@@ -13,13 +13,13 @@
 # Properties proved:
 #   P7  : budget = 0 ∨ mult = 0 → gain = 0  (zero input → zero output)
 #   P10 : combined_multiplier > 0 for all valid inputs
-#   P11 : grey_multiplier(False) < grey_multiplier(True)
-#   P12 : talent mults are strictly ordered (Slow < Normal < Average < Fast < Fastest)
-#   P13 : age multipliers are non-increasing (older ≤ younger)
-#   P14 : OVR is deterministic (same inputs → same output)
-#   P15 : OVR is non-decreasing when any stat increases
-#   P18 : base_ovr < MAX_BASE_OVR → not locked  (no false lock-outs)
-#   P19 : base_ovr ≥ MAX_BASE_OVR → locked      (no missed lock-outs)
+#   P11 : secondary_metric_weight < primary_metric_weight
+#   P12 : efficiency class mults are strictly ordered (Degraded < Standard < Class-A)
+#   P13 : maturity multipliers are non-increasing (higher index ≤ lower index)
+#   P14 : CCI is deterministic (same inputs → same output)
+#   P15 : CCI is non-decreasing when any metric increases
+#   P18 : base_cci < CAPACITY_CEILING → not locked  (no false lock-outs)
+#   P19 : base_cci ≥ CAPACITY_CEILING → locked      (no missed lock-outs)
 
 import pytest
 
@@ -39,11 +39,11 @@ _skip = pytest.mark.skipif(not _Z3_AVAILABLE, reason="z3-solver not installed")
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from verification.constants_pure import (
-    GREY_MULT, TALENT_MULTS, TALENT_ORDER,
-    AGE_TABLE, _AGE_KEYS_SORTED,
-    MAX_BASE_OVR, TOTAL_ATTRS, OVR_DIVISOR,
-    BASE_XPS, SESSION_BUDGET_DECAY,
-    STAT_CAP,
+    SECONDARY_METRIC_WEIGHT, EFFICIENCY_CLASS_MULTS, EFFICIENCY_CLASS_ORDER,
+    MATURITY_MULTS, _MATURITY_KEYS_SORTED,
+    CAPACITY_CEILING, METRIC_COUNT, CCI_DIVISOR_SCALE,
+    BASE_RESOURCES_PER_CYCLE, CYCLE_BUDGET_DECAY,
+    METRIC_CAP,
 )
 
 
@@ -100,27 +100,27 @@ def test_p10_combined_multiplier_positive():
     """P10: combined_multiplier > 0 for all valid inputs.
 
     Encoding: each component is positive, and a product of positives is positive.
-    age_mult ∈ [0, 1.1] but the real AGE_TABLE has 0.0 for age 30 only.
-    We use am ∈ (0, 1.1], tm > 0, gm ∈ (0, 1], sm > 0, ad ≥ 1, dl > 0.
+    maturity_mult ∈ (0, 1.1], efficiency_mult > 0, weight_mult ∈ (0, 1],
+    threshold_mult > 0, boost ≥ 1, cycle_intensity > 0.
     """
     s = Solver()
     s.set("timeout", 5000)
 
-    am = Real("am")   # age multiplier
-    tm = Real("tm")   # talent multiplier
-    gm = Real("gm")   # grey multiplier
-    sm = Real("sm")   # star decay multiplier
-    ad = Real("ad")   # 2× ad multiplier
-    dl = Real("dl")   # drill level multiplier
+    mm = Real("mm")   # maturity multiplier
+    em = Real("em")   # efficiency class multiplier
+    wm = Real("wm")   # metric weight multiplier
+    td = Real("td")   # threshold decay multiplier
+    bm = Real("bm")   # boost multiplier
+    ci = Real("ci")   # cycle intensity multiplier
     combined = Real("combined")
 
-    s.add(am > 0.0, am <= 1.1)
-    s.add(tm > 0.0)
-    s.add(gm > 0.0, gm <= 1.0)
-    s.add(sm > 0.0, sm <= 1.0)
-    s.add(ad >= 1.0)
-    s.add(dl > 0.0)
-    s.add(combined == am * tm * gm * sm * ad * dl)
+    s.add(mm > 0.0, mm <= 1.1)
+    s.add(em > 0.0)
+    s.add(wm > 0.0, wm <= 1.0)
+    s.add(td > 0.0, td <= 1.0)
+    s.add(bm >= 1.0)
+    s.add(ci > 0.0)
+    s.add(combined == mm * em * wm * td * bm * ci)
 
     # Attempt: combined ≤ 0 despite all factors being positive
     s.add(combined <= 0.0)
@@ -131,19 +131,19 @@ def test_p10_combined_multiplier_positive():
 # ── P11 ───────────────────────────────────────────────────────────────────────
 
 @_skip
-def test_p11_grey_less_than_white():
-    """P11: grey_multiplier(False) < grey_multiplier(True)."""
+def test_p11_secondary_less_than_primary():
+    """P11: secondary metric weight < primary metric weight."""
     s = Solver()
     s.set("timeout", 5000)
 
-    grey_val  = Real("grey_val")
-    white_val = Real("white_val")
+    secondary_val = Real("secondary_val")
+    primary_val   = Real("primary_val")
 
-    s.add(grey_val  == GREY_MULT)   # 0.22
-    s.add(white_val == 1.0)
+    s.add(secondary_val == SECONDARY_METRIC_WEIGHT)  # 0.22
+    s.add(primary_val   == 1.0)
 
-    # Attempt: grey ≥ white
-    s.add(grey_val >= white_val)
+    # Attempt: secondary ≥ primary
+    s.add(secondary_val >= primary_val)
 
     _check(s)
 
@@ -151,7 +151,7 @@ def test_p11_grey_less_than_white():
 # ── P12 ───────────────────────────────────────────────────────────────────────
 
 @_skip
-def test_p12_talent_ordering_strict():
+def test_p12_efficiency_class_ordering_strict():
     """P12: Degraded < Standard < Class-A (strict ordering of efficiency class mults)."""
     s = Solver()
     s.set("timeout", 5000)
@@ -160,9 +160,9 @@ def test_p12_talent_ordering_strict():
     standard_v = Real("standard_v")
     class_a_v  = Real("class_a_v")
 
-    s.add(degraded_v == TALENT_MULTS['Degraded'])
-    s.add(standard_v == TALENT_MULTS['Standard'])
-    s.add(class_a_v  == TALENT_MULTS['Class-A'])
+    s.add(degraded_v == EFFICIENCY_CLASS_MULTS['Degraded'])
+    s.add(standard_v == EFFICIENCY_CLASS_MULTS['Standard'])
+    s.add(class_a_v  == EFFICIENCY_CLASS_MULTS['Class-A'])
 
     # Attempt: any adjacent pair violates strict ordering
     s.add(Or(
@@ -176,24 +176,23 @@ def test_p12_talent_ordering_strict():
 # ── P13 ───────────────────────────────────────────────────────────────────────
 
 @_skip
-def test_p13_age_multipliers_non_increasing():
-    """P13: age_multiplier is non-increasing — adjacent entries never go up.
+def test_p13_maturity_multipliers_non_increasing():
+    """P13: maturity_multiplier is non-increasing — adjacent entries never go up.
 
-    Checks each consecutive pair in the age table.
+    Checks each consecutive pair in the maturity table.
     """
     s = Solver()
     s.set("timeout", 5000)
 
-    ages = _AGE_KEYS_SORTED
-    mults = [TALENT_MULTS.get(str(a), AGE_TABLE[str(a)]) for a in ages]
+    maturity_indices = _MATURITY_KEYS_SORTED
 
-    # Build actual age multiplier values from AGE_TABLE
-    age_vals = [Real(f"age_{a}") for a in ages]
-    for i, a in enumerate(ages):
-        s.add(age_vals[i] == AGE_TABLE[str(a)])
+    # Build actual maturity multiplier values from MATURITY_MULTS
+    maturity_vals = [Real(f"maturity_{a}") for a in maturity_indices]
+    for i, a in enumerate(maturity_indices):
+        s.add(maturity_vals[i] == MATURITY_MULTS[str(a)])
 
-    # Attempt: any adjacent pair where older age has strictly higher multiplier
-    violations = [age_vals[i] < age_vals[i + 1] for i in range(len(ages) - 1)]
+    # Attempt: any adjacent pair where higher index has strictly higher multiplier
+    violations = [maturity_vals[i] < maturity_vals[i + 1] for i in range(len(maturity_indices) - 1)]
     s.add(Or(violations))
 
     _check(s)
@@ -202,28 +201,27 @@ def test_p13_age_multipliers_non_increasing():
 # ── P14 ───────────────────────────────────────────────────────────────────────
 
 @_skip
-def test_p14_ovr_deterministic():
-    """P14: OVR is deterministic — identical stat sums always yield the same OVR."""
+def test_p14_cci_deterministic():
+    """P14: CCI is deterministic — identical metric sums always yield the same CCI."""
     s = Solver()
     s.set("timeout", 5000)
 
     total1 = Real("total1")
     total2 = Real("total2")
-    ovr1   = Int("ovr1")
-    ovr2   = Int("ovr2")
+    cci1   = Int("cci1")
+    cci2   = Int("cci2")
     denom  = Int("denom")
 
-    s.add(denom == TOTAL_ATTRS * OVR_DIVISOR)   # 15
+    s.add(denom == METRIC_COUNT * CCI_DIVISOR_SCALE)
     s.add(total1 == total2)
     s.add(total1 >= 0.0)
 
-    # floor(total/15) is deterministic: same total → same OVR
-    # Encode floor: ovr ≤ total/denom < ovr+1
-    s.add(ovr1 * denom <= total1, total1 < (ovr1 + 1) * denom)
-    s.add(ovr2 * denom <= total2, total2 < (ovr2 + 1) * denom)
+    # floor(total/denom) is deterministic: same total → same CCI
+    s.add(cci1 * denom <= total1, total1 < (cci1 + 1) * denom)
+    s.add(cci2 * denom <= total2, total2 < (cci2 + 1) * denom)
 
-    # Attempt: same total but different OVR
-    s.add(ovr1 != ovr2)
+    # Attempt: same total but different CCI
+    s.add(cci1 != cci2)
 
     _check(s)
 
@@ -231,26 +229,26 @@ def test_p14_ovr_deterministic():
 # ── P15 ───────────────────────────────────────────────────────────────────────
 
 @_skip
-def test_p15_ovr_non_decreasing_on_stat_increase():
-    """P15: if stat sum increases, OVR does not decrease."""
+def test_p15_cci_non_decreasing_on_metric_increase():
+    """P15: if metric sum increases, CCI does not decrease."""
     s = Solver()
     s.set("timeout", 5000)
 
     total1 = Real("total1")   # higher total (after gain)
     total2 = Real("total2")   # lower total (before gain)
-    ovr1   = Int("ovr1")
-    ovr2   = Int("ovr2")
+    cci1   = Int("cci1")
+    cci2   = Int("cci2")
     denom  = Int("denom")
 
-    s.add(denom == TOTAL_ATTRS * OVR_DIVISOR)   # 15
+    s.add(denom == METRIC_COUNT * CCI_DIVISOR_SCALE)
     s.add(total1 > total2)
     s.add(total2 >= 0.0)
 
-    s.add(ovr1 * denom <= total1, total1 < (ovr1 + 1) * denom)
-    s.add(ovr2 * denom <= total2, total2 < (ovr2 + 1) * denom)
+    s.add(cci1 * denom <= total1, total1 < (cci1 + 1) * denom)
+    s.add(cci2 * denom <= total2, total2 < (cci2 + 1) * denom)
 
-    # Attempt: higher stat total but lower OVR
-    s.add(ovr1 < ovr2)
+    # Attempt: higher metric total but lower CCI
+    s.add(cci1 < cci2)
 
     _check(s)
 
@@ -259,20 +257,20 @@ def test_p15_ovr_non_decreasing_on_stat_increase():
 
 @_skip
 def test_p18_no_false_lockouts():
-    """P18: base_ovr < MAX_BASE_OVR → training NOT locked (no false lock-outs)."""
+    """P18: base_cci < CAPACITY_CEILING → investment NOT locked (no false lock-outs)."""
     s = Solver()
     s.set("timeout", 5000)
 
-    base_ovr  = Real("base_ovr")
+    base_cci  = Real("base_cci")
     is_locked = Bool("is_locked")
     threshold = Real("threshold")
 
-    s.add(threshold == float(MAX_BASE_OVR))   # 180.0
-    s.add(Implies(base_ovr >= threshold, is_locked))
-    s.add(Implies(base_ovr < threshold, Not(is_locked)))
+    s.add(threshold == float(CAPACITY_CEILING))
+    s.add(Implies(base_cci >= threshold, is_locked))
+    s.add(Implies(base_cci < threshold, Not(is_locked)))
 
-    # Attempt: base_ovr < threshold but is_locked = True
-    s.add(base_ovr < threshold, is_locked)
+    # Attempt: base_cci < threshold but is_locked = True
+    s.add(base_cci < threshold, is_locked)
 
     _check(s)
 
@@ -281,20 +279,20 @@ def test_p18_no_false_lockouts():
 
 @_skip
 def test_p19_no_missed_lockouts():
-    """P19: base_ovr ≥ MAX_BASE_OVR → training locked (no missed lock-outs)."""
+    """P19: base_cci ≥ CAPACITY_CEILING → investment locked (no missed lock-outs)."""
     s = Solver()
     s.set("timeout", 5000)
 
-    base_ovr  = Real("base_ovr")
+    base_cci  = Real("base_cci")
     is_locked = Bool("is_locked")
     threshold = Real("threshold")
 
-    s.add(threshold == float(MAX_BASE_OVR))
-    s.add(Implies(base_ovr >= threshold, is_locked))
-    s.add(Implies(base_ovr < threshold, Not(is_locked)))
+    s.add(threshold == float(CAPACITY_CEILING))
+    s.add(Implies(base_cci >= threshold, is_locked))
+    s.add(Implies(base_cci < threshold, Not(is_locked)))
 
-    # Attempt: base_ovr ≥ threshold but is_locked = False
-    s.add(base_ovr >= threshold, Not(is_locked))
+    # Attempt: base_cci ≥ threshold but is_locked = False
+    s.add(base_cci >= threshold, Not(is_locked))
 
     _check(s)
 
@@ -303,22 +301,22 @@ def test_p19_no_missed_lockouts():
 
 @_skip
 def test_p18_p19_lock_bijection():
-    """P18+P19 combined: is_locked ↔ base_ovr ≥ MAX_BASE_OVR (exhaustive bijection)."""
+    """P18+P19 combined: is_locked ↔ base_cci ≥ CAPACITY_CEILING (exhaustive bijection)."""
     s = Solver()
     s.set("timeout", 5000)
 
-    base_ovr  = Real("base_ovr")
+    base_cci  = Real("base_cci")
     is_locked = Bool("is_locked")
     threshold = Real("threshold")
 
-    s.add(threshold == float(MAX_BASE_OVR))
-    s.add(Implies(is_locked,        base_ovr >= threshold))
-    s.add(Implies(Not(is_locked),   base_ovr < threshold))
+    s.add(threshold == float(CAPACITY_CEILING))
+    s.add(Implies(is_locked,        base_cci >= threshold))
+    s.add(Implies(Not(is_locked),   base_cci < threshold))
 
     # Attempt: any combination that violates the bijection
     s.add(Or(
-        And(is_locked,        base_ovr < threshold),
-        And(Not(is_locked),   base_ovr >= threshold),
+        And(is_locked,        base_cci < threshold),
+        And(Not(is_locked),   base_cci >= threshold),
     ))
 
     _check(s)

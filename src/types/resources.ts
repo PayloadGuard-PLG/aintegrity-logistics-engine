@@ -90,36 +90,36 @@ export interface XpCostEntry {
 
 export interface GameProfile {
   version: string;
-  xpCostTable: XpCostEntry[];
-  xpCostBase?: number;
-  xpCostDecayK?: number;
-  seasonDecayPerLevel?: number;
-  ageTable: Record<string, number>;
-  talentMultipliers: Record<string, number>;
-  drillLevelMultipliers: Record<string, number>;
-  tierAttrAdditions: Record<string, number>;
-  tierIncrements: Record<string, number>;
-  tierPointsRequired: Record<string, number>;
-  fanClubCondReduction: number[];
-  condLevelMultipliers: Record<string, number>;
-  baseLossPerDrill: number;
+  costCurveTable: XpCostEntry[];
+  costCurveBase?: number;
+  costCurveDecay?: number;
+  periodicDegradationPerStage?: number;
+  maturityMultipliers: Record<string, number>;
+  efficiencyClassMultipliers: Record<string, number>;
+  cycleIntensityMultipliers: Record<string, number>;
+  stageMetricAdditions: Record<string, number>;
+  stageMetricIncrements: Record<string, number>;
+  stagePointsRequired: Record<string, number>;
+  supportDrainReduction: number[];
+  intensityMultipliers: Record<string, number>;
+  baseDrainPerCycle: number;
   zeroDrainThreshold: number;
-  greyWeightMultiplier: number;
-  statCap: number;
-  maxBaseOvr: number;
-  baseXpPerSession: number;
-  drillXpFactor?: number;
-  sessionBudgetDecay?: number;
-  twoxAdMultiplier: number;
-  starDecayPerSession: number;
-  starOvrThreshold: number;
-  qualityOvrDivisor: number;
-  totalAttributeCount: number;
-  teamPlayDecayPerDay: number;
-  matchAdvisorMultiplier: number;
-  teamPlayFreeDrillsPerDay: number;
-  conditionPerRestorer: number;
-  maxTrainingLevel: number;
+  secondaryMetricWeight: number;
+  metricCap: number;
+  capacityCeiling: number;
+  baseResourcesPerCycle: number;
+  conditioningResourceFactor?: number;
+  cycleBudgetDecay?: number;
+  boostMultiplier: number;
+  thresholdDecayFactor: number;
+  thresholdCciIncrement: number;
+  cciDivisorScale: number;
+  metricCount: number;
+  coordinationDecayPerDay: number;
+  advisorMultiplier: number;
+  freeCyclesPerDay: number;
+  readinessPerRestoration: number;
+  maxCycleLevel: number;
 }
 
 // --- Legacy coach types (kept for DB backward compatibility) ---

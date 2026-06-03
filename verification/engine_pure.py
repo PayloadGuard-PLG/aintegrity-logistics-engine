@@ -15,146 +15,160 @@
 import math
 
 from .constants_pure import (
-    C0, K,
-    BASE_XPS, SESSION_BUDGET_DECAY,
-    GREY_MULT,
-    AGE_TABLE, TALENT_MULTS,
-    STAR_DECAY, STAR_OVR_THRESHOLD,
-    TWOX_AD_MULT,
-    TOTAL_ATTRS, OVR_DIVISOR,
-    MAX_BASE_OVR,
-    COND_LEVEL_MULTS, FAN_COND_REDUCTION, BASE_LOSS_PER_DRILL,
-    CONDITION_PER_RESTORER, STAT_CAP,
-    _AGE_KEYS_SORTED,
+    COST_CURVE_BASE, COST_CURVE_DECAY,
+    BASE_RESOURCES_PER_CYCLE, CYCLE_BUDGET_DECAY,
+    SECONDARY_METRIC_WEIGHT,
+    MATURITY_MULTS, EFFICIENCY_CLASS_MULTS,
+    THRESHOLD_DECAY_FACTOR, THRESHOLD_CCI_INCREMENT,
+    BOOST_MULTIPLIER,
+    METRIC_COUNT, CCI_DIVISOR_SCALE,
+    CAPACITY_CEILING,
+    INTENSITY_MULTS, SUPPORT_DRAIN_REDUCTION, BASE_DRAIN_PER_CYCLE,
+    READINESS_PER_RESTORATION, METRIC_CAP,
+    _MATURITY_KEYS_SORTED,
 )
 
 
-# ── Stage 1: XP cost curve ───────────────────────────────────────────────────
+# ── Stage 1: Cost curve ──────────────────────────────────────────────────────
 
-def xp_cost_at_stat(stat: float) -> float:
+def cost_at_metric(metric: float) -> float:
     """
-    pre: math.isfinite(stat)
+    pre: math.isfinite(metric)
     post: __return__ > 0.0
     """
-    return C0 * math.exp(stat / K)
+    return COST_CURVE_BASE * math.exp(metric / COST_CURVE_DECAY)
 
 
-# ── Stage 2a: Age multiplier ─────────────────────────────────────────────────
+# ── Stage 2a: Maturity multiplier ────────────────────────────────────────────
 
-def age_multiplier(age: float) -> float:
+def maturity_multiplier(maturity_index: float) -> float:
     """
-    pre: math.isfinite(age)
+    pre: math.isfinite(maturity_index)
     post: 0.0 <= __return__ <= 1.1
     """
-    ages = _AGE_KEYS_SORTED
-    if age <= ages[0]:
-        return AGE_TABLE[str(ages[0])]
+    ages = _MATURITY_KEYS_SORTED
+    if maturity_index <= ages[0]:
+        return MATURITY_MULTS[str(ages[0])]
     for i in range(len(ages) - 1):
         a0, a1 = ages[i], ages[i + 1]
-        if a0 <= age <= a1:
-            t  = (age - a0) / (a1 - a0)
-            v0 = AGE_TABLE[str(a0)]
-            v1 = AGE_TABLE[str(a1)]
+        if a0 <= maturity_index <= a1:
+            t  = (maturity_index - a0) / (a1 - a0)
+            v0 = MATURITY_MULTS[str(a0)]
+            v1 = MATURITY_MULTS[str(a1)]
             return round(v0 + t * (v1 - v0), 4)
-    return AGE_TABLE[str(ages[-1])]
+    return MATURITY_MULTS[str(ages[-1])]
 
 
-# ── Stage 2b: Talent multiplier ──────────────────────────────────────────────
+# ── Stage 2b: Efficiency class multiplier ────────────────────────────────────
 
-def talent_multiplier(talent: str) -> float:
+def efficiency_class_multiplier(efficiency_class: str) -> float:
     """
     post: __return__ > 0.0
     """
-    return TALENT_MULTS.get(talent, 1.0)
+    return EFFICIENCY_CLASS_MULTS.get(efficiency_class, 1.0)
 
 
-# ── Stage 2c: Grey stat weight ───────────────────────────────────────────────
+# ── Stage 2c: Metric weight (primary vs secondary) ───────────────────────────
 
-def grey_multiplier(is_white: bool) -> float:
+def metric_weight_multiplier(is_primary: bool) -> float:
     """
     post: 0.0 < __return__ <= 1.0
-    post: (not is_white) == (__return__ < 1.0)
+    post: (not is_primary) == (__return__ < 1.0)
     """
-    return 1.0 if is_white else GREY_MULT
+    return 1.0 if is_primary else SECONDARY_METRIC_WEIGHT
 
 
-# ── Stage 2d: Star decay ─────────────────────────────────────────────────────
+# ── Stage 2d: Threshold decay ────────────────────────────────────────────────
 
-def stars_gained_from_ovr_gain(session_ovr_gain: float) -> int:
+def thresholds_crossed_from_cci_gain(session_cci_gain: float) -> int:
     """
-    pre: session_ovr_gain >= 0.0
+    pre: session_cci_gain >= 0.0
     post: __return__ >= 0
     """
-    return int(math.floor(session_ovr_gain / STAR_OVR_THRESHOLD))
+    return int(math.floor(session_cci_gain / THRESHOLD_CCI_INCREMENT))
 
 
-def star_decay_multiplier(stars_gained: int) -> float:
+def threshold_decay_multiplier(thresholds_crossed: int) -> float:
     """
-    pre: stars_gained >= 0
+    pre: thresholds_crossed >= 0
     post: 0.0 < __return__ <= 1.0
     """
-    return STAR_DECAY ** stars_gained
+    return THRESHOLD_DECAY_FACTOR ** thresholds_crossed
 
 
 # ── Stage 3: Combined multiplier ─────────────────────────────────────────────
 
 def combined_multiplier(
-    age: float,
-    talent: str,
-    is_white: bool,
-    stars_gained: int,
-    twox_ad: bool,
-    drill_level_mult: float,
+    maturity_index: float,
+    efficiency_class: str,
+    is_primary: bool,
+    thresholds_crossed: int,
+    boost_active: bool,
+    cycle_intensity_mult: float,
 ) -> float:
     """
-    pre: stars_gained >= 0
-    pre: drill_level_mult > 0.0
+    pre: thresholds_crossed >= 0
+    pre: cycle_intensity_mult > 0.0
     post: __return__ > 0.0
     """
-    am = age_multiplier(age)
-    tm = talent_multiplier(talent)
-    gm = grey_multiplier(is_white)
-    sm = star_decay_multiplier(stars_gained)
-    ad = TWOX_AD_MULT if twox_ad else 1.0
-    return am * tm * gm * sm * ad * drill_level_mult
+    mm = maturity_multiplier(maturity_index)
+    em = efficiency_class_multiplier(efficiency_class)
+    wm = metric_weight_multiplier(is_primary)
+    td = threshold_decay_multiplier(thresholds_crossed)
+    bm = BOOST_MULTIPLIER if boost_active else 1.0
+    return mm * em * wm * td * bm * cycle_intensity_mult
 
 
-# ── Stage 4a: Coach budget per stat ─────────────────────────────────────────
+# ── Stage 4a: Investment budget per metric ───────────────────────────────────
 
-def coach_budget_per_stat(sessions: float, num_stats: int) -> float:
+def investment_budget_per_metric(cycles: float, num_metrics: int) -> float:
     """
-    pre: sessions >= 0.0
-    pre: num_stats >= 0
+    pre: cycles >= 0.0
+    pre: num_metrics >= 0
     post: __return__ >= 0.0
-    post: (sessions == 0.0 or num_stats == 0) == (__return__ == 0.0)
+    post: (cycles == 0.0 or num_metrics == 0) == (__return__ == 0.0)
     """
-    if num_stats <= 0:
+    if num_metrics <= 0:
         return 0.0
-    decay = SESSION_BUDGET_DECAY
-    if decay >= 1.0 or sessions <= 0.0:
-        effective = sessions
+    decay = CYCLE_BUDGET_DECAY
+    if decay >= 1.0 or cycles <= 0.0:
+        effective = cycles
     else:
-        effective = (1.0 - decay ** sessions) / (1.0 - decay)
-    return effective * BASE_XPS / num_stats
+        effective = (1.0 - decay ** cycles) / (1.0 - decay)
+    return effective * BASE_RESOURCES_PER_CYCLE / num_metrics
 
 
-# ── Stage 5: Stat gain from budget ───────────────────────────────────────────
+# ── Stage 4b: Conditioning budget per metric ─────────────────────────────────
 
-def stat_gain_from_budget(start_stat: float, budget: float, mult: float) -> float:
+def conditioning_budget_per_metric(cycles: float, num_metrics: int) -> float:
     """
-    pre: start_stat >= 0.0
+    pre: cycles >= 0.0
+    pre: num_metrics >= 0
+    post: __return__ >= 0.0
+    """
+    if num_metrics <= 0:
+        return 0.0
+    from .constants_pure import CONDITIONING_RESOURCE_FACTOR
+    return (cycles * BASE_RESOURCES_PER_CYCLE * CONDITIONING_RESOURCE_FACTOR) / num_metrics
+
+
+# ── Stage 5: Metric gain from budget ─────────────────────────────────────────
+
+def metric_gain_from_budget(start_metric: float, budget: float, mult: float) -> float:
+    """
+    pre: start_metric >= 0.0
     pre: budget >= 0.0
     pre: mult >= 0.0
     post: __return__ >= 0.0
-    post: __return__ <= STAT_CAP - start_stat
+    post: __return__ <= METRIC_CAP - start_metric
     """
     if mult <= 0.0 or budget <= 0.0:
         return 0.0
     remaining = budget
     gain      = 0.0
-    current   = start_stat
-    while remaining > 0.0 and current < STAT_CAP:
-        cost = xp_cost_at_stat(current) / mult
+    current   = start_metric
+    while remaining > 0.0 and current < METRIC_CAP:
+        cost = cost_at_metric(current) / mult
         if not math.isfinite(cost) or cost <= 0.0:
             break
         if cost > remaining:
@@ -166,35 +180,35 @@ def stat_gain_from_budget(start_stat: float, budget: float, mult: float) -> floa
     return gain
 
 
-# ── Stage 6: OVR formula ─────────────────────────────────────────────────────
+# ── Stage 6: CCI formula ─────────────────────────────────────────────────────
 
-def ovr_from_stats(stat_values: list[float]) -> int:
+def cci_from_metrics(metric_values: list[float]) -> int:
     """
-    pre: len(stat_values) >= 0
+    pre: len(metric_values) >= 0
     post: __return__ >= 0
     """
-    if not stat_values:
+    if not metric_values:
         return 0
-    return math.floor(sum(stat_values) / (TOTAL_ATTRS * OVR_DIVISOR))
+    return math.floor(sum(metric_values) / (METRIC_COUNT * CCI_DIVISOR_SCALE))
 
 
-# ── Season decay ─────────────────────────────────────────────────────────────
+# ── Periodic degradation ─────────────────────────────────────────────────────
 
-def apply_season_decay(
-    stat_values: list[float],
-    levels_promoted: int,
-    decay_per_level: float,
+def apply_periodic_degradation(
+    metric_values: list[float],
+    period_count: int,
+    degradation_per_period: float,
 ) -> list[float]:
     """
-    pre: levels_promoted >= 0
-    pre: decay_per_level >= 0.0
-    pre: all(v >= 0.0 for v in stat_values)
-    post: len(__return__) == len(stat_values)
+    pre: period_count >= 0
+    pre: degradation_per_period >= 0.0
+    pre: all(v >= 0.0 for v in metric_values)
+    post: len(__return__) == len(metric_values)
     post: all(v >= 0.0 for v in __return__)
-    post: all(__return__[i] <= stat_values[i] for i in range(len(stat_values)))
+    post: all(__return__[i] <= metric_values[i] for i in range(len(metric_values)))
     """
-    drop = decay_per_level * levels_promoted
-    return [max(0.0, v - drop) for v in stat_values]
+    drop = degradation_per_period * period_count
+    return [max(0.0, v - drop) for v in metric_values]
 
 
 # ── Intervention (Phase B2) ──────────────────────────────────────────────────
@@ -252,22 +266,22 @@ def propagate_uncertainty(
     }
 
 
-# ── Training lock ─────────────────────────────────────────────────────────────
+# ── Investment lock ───────────────────────────────────────────────────────────
 
-def is_training_locked(base_ovr: float) -> bool:
+def is_investment_locked(base_cci: float) -> bool:
     """
-    post: __return__ == (base_ovr >= MAX_BASE_OVR)
+    post: __return__ == (base_cci >= CAPACITY_CEILING)
     """
-    return base_ovr >= MAX_BASE_OVR
+    return base_cci >= CAPACITY_CEILING
 
 
-# ── Condition drain ───────────────────────────────────────────────────────────
+# ── Readiness drain ───────────────────────────────────────────────────────────
 
-def condition_drain_pct(drill_intensity: str, fan_level: int) -> float:
+def readiness_drain_pct(cycle_intensity: str, support_level: int) -> float:
     """
-    pre: 0 <= fan_level < len(FAN_COND_REDUCTION)
+    pre: 0 <= support_level < len(SUPPORT_DRAIN_REDUCTION)
     post: __return__ >= 0.0
     """
-    int_mult = COND_LEVEL_MULTS.get(drill_intensity, 1.0)
-    fan_red  = FAN_COND_REDUCTION[fan_level]
-    return BASE_LOSS_PER_DRILL * int_mult * (1.0 - fan_red / 100.0)
+    int_mult = INTENSITY_MULTS.get(cycle_intensity, 1.0)
+    fan_red  = SUPPORT_DRAIN_REDUCTION[support_level]
+    return BASE_DRAIN_PER_CYCLE * int_mult * (1.0 - fan_red / 100.0)

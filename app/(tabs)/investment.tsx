@@ -15,7 +15,7 @@ import { TabBackground } from '../../src/components/TabBackground';
 import { isWhiteStat, OUTFIELD_STATS, GK_STATS_ALL, STAT_COLUMNS } from '../../src/utils/metricWeights';
 import { StatGrid3Col } from '../../src/components/StatGrid3Col';
 import { estimateStatGainPct } from '../../src/logic/xpEngine';
-import { coachBudgetPerStat } from '../../src/engine/engineMath';
+import { investmentBudgetPerMetric } from '../../src/engine/engineMath';
 import { computeOvrFromStats, computeOvrWithPadding } from '../../src/logic/ovrProjector';
 import gameProfileJson from '../../profiles/logistics_v1.json';
 import { TalentTier, GameProfile } from '../../src/types/resources';
@@ -246,7 +246,7 @@ export default function CoachesScreen() {
     if (sessionCount === 0) return;
 
     const drillMult = 1.0;
-    const budget = coachBudgetPerStat(sessionCount, scannedStats);
+    const budget = investmentBudgetPerMetric(sessionCount, scannedStats);
     const projTalent: TalentTier = 'Normal';
     const gains: StatGain[] = [];
     const postCoachStats = { ...player.stats };
@@ -257,7 +257,7 @@ export default function CoachesScreen() {
       const isWhite = isWhiteStat(player.role, statName);
       const gain = estimateStatGainPct(budget, from, player.age, 0, projTalent, isWhite, false, drillMult, profile);
       if (gain > 0) {
-        postCoachStats[statName] = Math.min(from + gain, profile.statCap);
+        postCoachStats[statName] = Math.min(from + gain, profile.metricCap);
         gains.push({ stat: statName, from, gain: Number(gain.toFixed(1)), isWhite });
       }
     }
@@ -266,8 +266,8 @@ export default function CoachesScreen() {
     // Projected OVR uses raw sum/15 (no floor) so fractional progress is visible to 0.1.
     // ovrBefore stays floored to match the game's displayed integer OVR.
     const projSum = Object.values(postCoachStats).reduce((a, b) => a + b, 0)
-      + player.overall * Math.max(0, profile.totalAttributeCount - Object.keys(postCoachStats).length);
-    const ovrAfter = Number((projSum / profile.totalAttributeCount).toFixed(1));
+      + player.overall * Math.max(0, profile.metricCount - Object.keys(postCoachStats).length);
+    const ovrAfter = Number((projSum / profile.metricCount).toFixed(1));
     setResult({ gains, ovrBefore, ovrAfter, ovrGain: Number((ovrAfter - ovrBefore).toFixed(1)), postCoachStats });
     setSaveConfirmed(false);
     if (!scanStatus.startsWith('SCANNED')) {
@@ -391,7 +391,7 @@ export default function CoachesScreen() {
                     BOOSTED STATS — TAP TO SELECT (MAX 2)
                   </MonoLabel>
                   <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                    {(CATEGORY_STATS[coachCategory] ?? []).map(stat => {
+                    {(CATEGORY_STATS[coachCategory] ?? []).map((stat: string) => {
                       const sel = focusedStatSel.has(stat);
                       const col = statColor(stat);
                       return (

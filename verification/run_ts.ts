@@ -8,13 +8,13 @@
  *        { "error": "<message>" }   (on dispatch failure)
  *
  * Args schema per function (matches engine_pure.py calling convention):
- *   coachBudgetPerStat   [sessions: number, numStats: number]
- *   statGainFromBudget   [startStat: number, budget: number, mult: number]
- *   ovrFromStats         [[...statValues: number[]]]
- *   combinedMultiplier   [{ age, talent, isWhite, starsGained, twoxAd, drillLevelMult }]
- *   applySeasonDecay     [[...statValues: number[]], levels: number, decayPerLevel: number]
- *   isTrainingLocked     [baseOvr: number]
- *   conditionDrainPct    [drillIntensity: string, fanLevel: number]
+ *   investmentBudgetPerMetric  [cycles: number, numMetrics: number]
+ *   metricGainFromBudget       [startMetric: number, budget: number, mult: number]
+ *   cciFromMetrics             [[...metricValues: number[]]]
+ *   combinedMultiplier         [{ maturityIndex, efficiencyClass, isPrimary, thresholdsCrossed, boostActive, cycleIntensityMult }]
+ *   applyPeriodicDegradation   [[...metricValues: number[]], periodCount: number, degradationPerPeriod: number]
+ *   isInvestmentLocked         [baseCci: number]
+ *   readinessDrainPct          [cycleIntensity: string, supportLevel: number]
  *
  * Run standalone: npx tsx verification/run_ts.ts
  * Stays alive reading lines until stdin closes.
@@ -22,46 +22,46 @@
 
 import * as readline from 'readline';
 import {
-  coachBudgetPerStat,
-  statGainFromBudget,
-  ovrFromStats,
+  investmentBudgetPerMetric,
+  metricGainFromBudget,
+  cciFromMetrics,
   combinedMultiplier,
-  applySeasonDecay,
-  isTrainingLocked,
-  conditionDrainPct,
+  applyPeriodicDegradation,
+  isInvestmentLocked,
+  readinessDrainPct,
 } from '../src/engine/engineMath';
 
 function dispatch(fn: string, args: unknown): unknown {
   const a = args as unknown[];
   switch (fn) {
-    case 'coachBudgetPerStat': {
-      const [sessions, numStats] = a as [number, number];
-      return coachBudgetPerStat(sessions, Array.from({ length: numStats }, (_, i) => `s${i}`));
+    case 'investmentBudgetPerMetric': {
+      const [cycles, numMetrics] = a as [number, number];
+      return investmentBudgetPerMetric(cycles, Array.from({ length: numMetrics }, (_, i) => `m${i}`));
     }
-    case 'statGainFromBudget': {
-      const [startStat, budget, mult] = a as [number, number, number];
-      return statGainFromBudget(startStat, budget, mult);
+    case 'metricGainFromBudget': {
+      const [startMetric, budget, mult] = a as [number, number, number];
+      return metricGainFromBudget(startMetric, budget, mult);
     }
-    case 'ovrFromStats': {
+    case 'cciFromMetrics': {
       const vals = a[0] as number[];
-      const stats: Record<string, number> = {};
-      vals.forEach((v, i) => { stats[`s${i}`] = v; });
-      return ovrFromStats(stats);
+      const metrics: Record<string, number> = {};
+      vals.forEach((v, i) => { metrics[`m${i}`] = v; });
+      return cciFromMetrics(metrics);
     }
     case 'combinedMultiplier': {
       return combinedMultiplier(a[0] as Parameters<typeof combinedMultiplier>[0]);
     }
-    case 'applySeasonDecay': {
-      const [vals, levels, decayPerLevel] = a as [number[], number, number];
-      const stats: Record<string, number> = {};
-      vals.forEach((v, i) => { stats[`s${i}`] = v; });
-      return Object.values(applySeasonDecay(stats, levels, decayPerLevel));
+    case 'applyPeriodicDegradation': {
+      const [vals, periodCount, degradationPerPeriod] = a as [number[], number, number];
+      const metrics: Record<string, number> = {};
+      vals.forEach((v, i) => { metrics[`m${i}`] = v; });
+      return Object.values(applyPeriodicDegradation(metrics, periodCount, degradationPerPeriod));
     }
-    case 'isTrainingLocked': {
-      return isTrainingLocked(a[0] as number);
+    case 'isInvestmentLocked': {
+      return isInvestmentLocked(a[0] as number);
     }
-    case 'conditionDrainPct': {
-      return conditionDrainPct(a[0] as string, a[1] as number);
+    case 'readinessDrainPct': {
+      return readinessDrainPct(a[0] as string, a[1] as number);
     }
     default:
       throw new Error(`Unknown function: ${fn}`);

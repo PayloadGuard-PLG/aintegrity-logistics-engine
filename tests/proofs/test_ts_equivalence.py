@@ -28,18 +28,18 @@ from hypothesis import strategies as st
 sys.path.insert(0, '.')
 
 from verification.engine_pure import (
-    apply_season_decay,
-    coach_budget_per_stat,
+    apply_periodic_degradation,
+    investment_budget_per_metric,
     combined_multiplier,
-    condition_drain_pct,
-    is_training_locked,
-    ovr_from_stats,
-    stat_gain_from_budget,
+    readiness_drain_pct,
+    is_investment_locked,
+    cci_from_metrics,
+    metric_gain_from_budget,
 )
 from verification.constants_pure import (
-    COND_LEVEL_MULTS,
-    FAN_COND_REDUCTION,
-    TALENT_MULTS,
+    INTENSITY_MULTS,
+    SUPPORT_DRAIN_REDUCTION,
+    EFFICIENCY_CLASS_MULTS,
 )
 
 # ── Persistent subprocess ──────────────────────────────────────────────────────
@@ -88,98 +88,99 @@ def _eq(a: float, b: float) -> bool:
 
 # ── Input strategies ───────────────────────────────────────────────────────────
 
-_TALENTS    = list(TALENT_MULTS.keys())
-_INTENSITIES = list(COND_LEVEL_MULTS.keys())
+_EFFICIENCY_CLASSES = list(EFFICIENCY_CLASS_MULTS.keys())
+_INTENSITIES        = list(INTENSITY_MULTS.keys())
 
-s_sessions   = st.floats(min_value=0.0,  max_value=200.0,    allow_nan=False, allow_infinity=False)
-s_num_stats  = st.integers(min_value=1, max_value=15)
-s_stat       = st.floats(min_value=0.0,  max_value=9999.0,   allow_nan=False, allow_infinity=False)
-s_budget     = st.floats(min_value=0.0,  max_value=500_000.0, allow_nan=False, allow_infinity=False)
-s_mult       = st.floats(min_value=0.01, max_value=10.0,     allow_nan=False, allow_infinity=False)
-s_age        = st.floats(min_value=17.0, max_value=31.0,     allow_nan=False, allow_infinity=False)
-s_talent     = st.sampled_from(_TALENTS)
-s_stars      = st.integers(min_value=0, max_value=20)
-s_drill_mult = st.floats(min_value=0.01, max_value=5.0,      allow_nan=False, allow_infinity=False)
-s_stat_list  = st.lists(s_stat, min_size=1, max_size=15)
-s_levels     = st.integers(min_value=0, max_value=10)
-s_decay      = st.floats(min_value=0.0,  max_value=100.0,    allow_nan=False, allow_infinity=False)
-s_base_ovr   = st.floats(min_value=0.0,  max_value=300.0,    allow_nan=False, allow_infinity=False)
-s_fan        = st.integers(min_value=0, max_value=len(FAN_COND_REDUCTION) - 1)
-s_intensity  = st.sampled_from(_INTENSITIES)
+s_cycles           = st.floats(min_value=0.0,  max_value=200.0,    allow_nan=False, allow_infinity=False)
+s_num_metrics      = st.integers(min_value=1, max_value=15)
+s_metric           = st.floats(min_value=0.0,  max_value=9999.0,   allow_nan=False, allow_infinity=False)
+s_budget           = st.floats(min_value=0.0,  max_value=500_000.0, allow_nan=False, allow_infinity=False)
+s_mult             = st.floats(min_value=0.01, max_value=10.0,     allow_nan=False, allow_infinity=False)
+s_maturity_index   = st.floats(min_value=17.0, max_value=31.0,     allow_nan=False, allow_infinity=False)
+s_efficiency_class = st.sampled_from(_EFFICIENCY_CLASSES)
+s_thresholds       = st.integers(min_value=0, max_value=20)
+s_cycle_mult       = st.floats(min_value=0.01, max_value=5.0,      allow_nan=False, allow_infinity=False)
+s_metric_list      = st.lists(s_metric, min_size=1, max_size=15)
+s_periods          = st.integers(min_value=0, max_value=10)
+s_degradation      = st.floats(min_value=0.0,  max_value=100.0,    allow_nan=False, allow_infinity=False)
+s_base_cci         = st.floats(min_value=0.0,  max_value=300.0,    allow_nan=False, allow_infinity=False)
+s_support          = st.integers(min_value=0, max_value=len(SUPPORT_DRAIN_REDUCTION) - 1)
+s_intensity        = st.sampled_from(_INTENSITIES)
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
 
 @pytest.mark.proof
-@given(s_sessions, s_num_stats)
+@given(s_cycles, s_num_metrics)
 @settings(max_examples=200, deadline=None)
-def test_coach_budget_per_stat(sessions: float, num_stats: int) -> None:
-    py = coach_budget_per_stat(sessions, num_stats)
-    ts = _ts('coachBudgetPerStat', [sessions, num_stats])
-    assert _eq(py, ts), f'coachBudgetPerStat({sessions}, {num_stats}): py={py} ts={ts}'
+def test_investment_budget_per_metric(cycles: float, num_metrics: int) -> None:
+    py = investment_budget_per_metric(cycles, num_metrics)
+    ts = _ts('investmentBudgetPerMetric', [cycles, num_metrics])
+    assert _eq(py, ts), f'investmentBudgetPerMetric({cycles}, {num_metrics}): py={py} ts={ts}'
 
 
 @pytest.mark.proof
-@given(s_stat, s_budget, s_mult)
+@given(s_metric, s_budget, s_mult)
 @settings(max_examples=200)
-def test_stat_gain_from_budget(start_stat: float, budget: float, mult: float) -> None:
-    py = stat_gain_from_budget(start_stat, budget, mult)
-    ts = _ts('statGainFromBudget', [start_stat, budget, mult])
-    assert _eq(py, ts), f'statGainFromBudget({start_stat}, {budget}, {mult}): py={py} ts={ts}'
+def test_metric_gain_from_budget(start_metric: float, budget: float, mult: float) -> None:
+    py = metric_gain_from_budget(start_metric, budget, mult)
+    ts = _ts('metricGainFromBudget', [start_metric, budget, mult])
+    assert _eq(py, ts), f'metricGainFromBudget({start_metric}, {budget}, {mult}): py={py} ts={ts}'
 
 
 @pytest.mark.proof
-@given(s_stat_list)
+@given(s_metric_list)
 @settings(max_examples=200)
-def test_ovr_from_stats(stat_values: list[float]) -> None:
-    py = ovr_from_stats(stat_values)
-    ts = _ts('ovrFromStats', [stat_values])
-    assert py == ts, f'ovrFromStats({stat_values}): py={py} ts={ts}'
+def test_cci_from_metrics(metric_values: list[float]) -> None:
+    py = cci_from_metrics(metric_values)
+    ts = _ts('cciFromMetrics', [metric_values])
+    assert py == ts, f'cciFromMetrics({metric_values}): py={py} ts={ts}'
 
 
 @pytest.mark.proof
-@given(s_age, s_talent, st.booleans(), s_stars, st.booleans(), s_drill_mult)
+@given(s_maturity_index, s_efficiency_class, st.booleans(), s_thresholds, st.booleans(), s_cycle_mult)
 @settings(max_examples=200)
 def test_combined_multiplier(
-    age: float, talent: str, is_white: bool,
-    stars_gained: int, twox_ad: bool, drill_level_mult: float,
+    maturity_index: float, efficiency_class: str, is_primary: bool,
+    thresholds_crossed: int, boost_active: bool, cycle_intensity_mult: float,
 ) -> None:
-    py = combined_multiplier(age, talent, is_white, stars_gained, twox_ad, drill_level_mult)
+    py = combined_multiplier(maturity_index, efficiency_class, is_primary, thresholds_crossed, boost_active, cycle_intensity_mult)
     ts = _ts('combinedMultiplier', [{
-        'age': age, 'talent': talent, 'isWhite': is_white,
-        'starsGained': stars_gained, 'twoxAd': twox_ad,
-        'drillLevelMult': drill_level_mult,
+        'maturityIndex': maturity_index, 'efficiencyClass': efficiency_class,
+        'isPrimary': is_primary, 'thresholdsCrossed': thresholds_crossed,
+        'boostActive': boost_active, 'cycleIntensityMult': cycle_intensity_mult,
     }])
     assert _eq(py, ts), (
-        f'combinedMultiplier(age={age}, talent={talent}, isWhite={is_white}, '
-        f'stars={stars_gained}, twox={twox_ad}, drill={drill_level_mult}): py={py} ts={ts}'
+        f'combinedMultiplier(maturity={maturity_index}, class={efficiency_class}, '
+        f'isPrimary={is_primary}, thresholds={thresholds_crossed}, '
+        f'boost={boost_active}, cycleIntensity={cycle_intensity_mult}): py={py} ts={ts}'
     )
 
 
 @pytest.mark.proof
-@given(s_stat_list, s_levels, s_decay)
+@given(s_metric_list, s_periods, s_degradation)
 @settings(max_examples=200)
-def test_apply_season_decay(stat_values: list[float], levels: int, decay_per_level: float) -> None:
-    py = apply_season_decay(stat_values, levels, decay_per_level)
-    ts = _ts('applySeasonDecay', [stat_values, levels, decay_per_level])
+def test_apply_periodic_degradation(metric_values: list[float], periods: int, degradation_per_period: float) -> None:
+    py = apply_periodic_degradation(metric_values, periods, degradation_per_period)
+    ts = _ts('applyPeriodicDegradation', [metric_values, periods, degradation_per_period])
     assert len(py) == len(ts), f'length mismatch: {len(py)} vs {len(ts)}'
     for i, (p, t) in enumerate(zip(py, ts)):
-        assert _eq(p, t), f'applySeasonDecay[{i}] (levels={levels}, decay={decay_per_level}): py={p} ts={t}'
+        assert _eq(p, t), f'applyPeriodicDegradation[{i}] (periods={periods}, degradation={degradation_per_period}): py={p} ts={t}'
 
 
 @pytest.mark.proof
-@given(s_base_ovr)
+@given(s_base_cci)
 @settings(max_examples=200)
-def test_is_training_locked(base_ovr: float) -> None:
-    py = is_training_locked(base_ovr)
-    ts = _ts('isTrainingLocked', [base_ovr])
-    assert py == ts, f'isTrainingLocked({base_ovr}): py={py} ts={ts}'
+def test_is_investment_locked(base_cci: float) -> None:
+    py = is_investment_locked(base_cci)
+    ts = _ts('isInvestmentLocked', [base_cci])
+    assert py == ts, f'isInvestmentLocked({base_cci}): py={py} ts={ts}'
 
 
 @pytest.mark.proof
-@given(s_intensity, s_fan)
+@given(s_intensity, s_support)
 @settings(max_examples=200)
-def test_condition_drain_pct(drill_intensity: str, fan_level: int) -> None:
-    py = condition_drain_pct(drill_intensity, fan_level)
-    ts = _ts('conditionDrainPct', [drill_intensity, fan_level])
-    assert _eq(py, ts), f'conditionDrainPct({drill_intensity!r}, {fan_level}): py={py} ts={ts}'
+def test_readiness_drain_pct(cycle_intensity: str, support_level: int) -> None:
+    py = readiness_drain_pct(cycle_intensity, support_level)
+    ts = _ts('readinessDrainPct', [cycle_intensity, support_level])
+    assert _eq(py, ts), f'readinessDrainPct({cycle_intensity!r}, {support_level}): py={py} ts={ts}'

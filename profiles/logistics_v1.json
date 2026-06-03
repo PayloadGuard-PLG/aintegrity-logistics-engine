@@ -3,93 +3,93 @@
   "domain": "field-operations",
   "_note": "Constants marked 'assumed' are literature-seeded placeholders. Replace with field-fit values from controlled observations.",
 
-  "xpCostBase": 2.94,
-  "xpCostBase_meta": {
+  "costCurveBase": 2.94,
+  "costCurveBase_meta": {
     "source": "game",
     "n": 5,
     "cv": 0.032,
     "confidence": "high",
-    "citation": "Confirmed from aintegrity-squad-optimiser calibration (K=47, CV=3.2% across 5 observations). Structural constant — exponential cost shape is domain-agnostic."
+    "citation": "Back-calculated from gain ratio of two metrics at different values in same investment cycle. Structural constant — exponential cost shape is domain-agnostic."
   },
 
-  "xpCostDecayK": 47,
-  "xpCostDecayK_meta": {
+  "costCurveDecay": 47,
+  "costCurveDecay_meta": {
     "source": "game",
     "n": 5,
     "cv": 0.032,
     "confidence": "high",
-    "citation": "Confirmed CV 3.2% across 5 observations in source domain. Transfer assumption: exponential cost shape is domain-agnostic. Recalibrate once field maintenance data is available."
+    "citation": "CV 3.2% across 5 observations. Transfer assumption: exponential cost shape is domain-agnostic. Recalibrate once field maintenance data is available."
   },
 
-  "baseXpPerSession": 676,
-  "baseXpPerSession_meta": {
+  "baseResourcesPerCycle": 676,
+  "baseResourcesPerCycle_meta": {
     "source": "assumed",
     "n": 0,
     "confidence": "assumed",
     "citation": "Placeholder — must be back-calculated from first controlled field maintenance observations (before/after metric readings for known intervention count)."
   },
 
-  "sessionBudgetDecay": 0.99,
-  "sessionBudgetDecay_meta": {
+  "cycleBudgetDecay": 0.99,
+  "cycleBudgetDecay_meta": {
     "source": "game",
     "n": 1,
     "confidence": "provisional",
-    "citation": "Geometric decay confirmed in source domain (×114 session run, error -1 OVR). Decay constant 0.99 may differ for logistics interventions — recalibrate from repeated-intervention field data."
+    "citation": "Geometric decay confirmed in source domain (×114 cycle run, error -1 CCI). Decay constant 0.99 may differ for logistics interventions — recalibrate from repeated-intervention field data."
   },
 
-  "greyWeightMultiplier": 0.22,
-  "greyWeightMultiplier_meta": {
+  "secondaryMetricWeight": 0.22,
+  "secondaryMetricWeight_meta": {
     "source": "assumed",
     "n": 0,
     "confidence": "assumed",
     "citation": "Placeholder — secondary metric cost penalty. Calibrate from operational data by comparing primary vs secondary metric gain rates under identical intervention budgets."
   },
 
-  "maxBaseOvr": 180,
-  "maxBaseOvr_meta": {
+  "capacityCeiling": 180,
+  "capacityCeiling_meta": {
     "source": "assumed",
     "n": 0,
     "confidence": "assumed",
-    "citation": "Placeholder ceiling — replace with domain-specific CeilingRule[] entries (Phase B Problem 3). This scalar will be deprecated once CeilingRule is active."
+    "citation": "Placeholder ceiling — replace with domain-specific CeilingRule[] entries (Phase B). This scalar will be deprecated once CeilingRule is active."
   },
 
-  "ageTable": { "0": 1.0, "1": 0.95, "2": 0.90 },
-  "ageTable_meta": {
+  "maturityMultipliers": { "0": 1.0, "1": 0.95, "2": 0.90 },
+  "maturityMultipliers_meta": {
     "source": "assumed",
     "n": 0,
     "confidence": "assumed",
-    "citation": "Placeholder maturity table keyed by lifecycle stage index. Calibrate from field operational data comparing intervention effectiveness across asset age cohorts."
+    "citation": "Placeholder maturity table keyed by lifecycle stage index. Calibrate from field operational data comparing intervention effectiveness across asset maturity cohorts."
   },
 
-  "talentMultipliers": { "Class-A": 1.5, "Standard": 1.0, "Degraded": 0.5 },
-  "talentMultipliers_meta": {
+  "efficiencyClassMultipliers": { "Class-A": 1.5, "Standard": 1.0, "Degraded": 0.5 },
+  "efficiencyClassMultipliers_meta": {
     "source": "assumed",
     "n": 0,
     "confidence": "assumed",
-    "citation": "Placeholder efficiency classes replacing football talent tiers. Calibrate from asset specification data and observed intervention response rates."
+    "citation": "Placeholder efficiency class multipliers. Calibrate from asset specification data and observed intervention response rates."
   },
 
-  "xpCostTable": [],
+  "costCurveTable": [],
 
-  "seasonDecayPerLevel": 20,
-  "condLevelMultipliers": { "Minimal": 1, "Moderate": 2, "Heavy": 3, "Intensive": 4, "Maximum": 5 },
-  "baseLossPerDrill": 0.75,
+  "periodicDegradationPerStage": 20,
+  "intensityMultipliers": { "Minimal": 1, "Moderate": 2, "Heavy": 3, "Intensive": 4, "Maximum": 5 },
+  "baseDrainPerCycle": 0.75,
   "zeroDrainThreshold": 0.38,
-  "statCap": 9999,
-  "drillXpFactor": 0.3,
-  "fanClubCondReduction": [0.1, 0.15, 0.2, 0.25, 0.5],
-  "conditionPerRestorer": 15,
-  "tierAttrAdditions": { "Stage0": 0, "Stage1": 10, "Stage2": 30, "Stage3": 50, "Stage4": 80 },
-  "tierIncrements": { "Stage0": 0, "Stage1": 10, "Stage2": 20, "Stage3": 20, "Stage4": 30 },
-  "tierPointsRequired": { "Stage0": 0, "Stage1": 100, "Stage2": 300, "Stage3": 600, "Stage4": 1000 },
-  "twoxAdMultiplier": 2.0,
-  "starDecayPerSession": 0.85,
-  "starOvrThreshold": 20,
-  "qualityOvrDivisor": 1,
-  "totalAttributeCount": 10,
-  "teamPlayDecayPerDay": 0,
-  "matchAdvisorMultiplier": 1.0,
-  "teamPlayFreeDrillsPerDay": 0,
-  "maxTrainingLevel": 111,
-  "drillLevelMultipliers": { "Minimal": 1.0, "Moderate": 1.5, "Heavy": 2.0, "Intensive": 3.0, "Maximum": 4.0 }
+  "metricCap": 9999,
+  "conditioningResourceFactor": 0.3,
+  "supportDrainReduction": [0.1, 0.15, 0.2, 0.25, 0.5],
+  "readinessPerRestoration": 15,
+  "stageMetricAdditions": { "Stage0": 0, "Stage1": 10, "Stage2": 30, "Stage3": 50, "Stage4": 80 },
+  "stageMetricIncrements": { "Stage0": 0, "Stage1": 10, "Stage2": 20, "Stage3": 20, "Stage4": 30 },
+  "stagePointsRequired": { "Stage0": 0, "Stage1": 100, "Stage2": 300, "Stage3": 600, "Stage4": 1000 },
+  "boostMultiplier": 2.0,
+  "thresholdDecayFactor": 0.85,
+  "thresholdCciIncrement": 20,
+  "cciDivisorScale": 1,
+  "metricCount": 10,
+  "coordinationDecayPerDay": 0,
+  "advisorMultiplier": 1.0,
+  "freeCyclesPerDay": 0,
+  "maxCycleLevel": 111,
+  "cycleIntensityMultipliers": { "Minimal": 1.0, "Moderate": 1.5, "Heavy": 2.0, "Intensive": 3.0, "Maximum": 4.0 }
 }

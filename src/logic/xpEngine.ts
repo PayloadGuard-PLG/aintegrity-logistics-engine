@@ -3,7 +3,7 @@
  *
  * All math is now in src/engine/engineMath.ts (pure functions, no profile objects).
  * This file keeps the GameProfile-typed signatures for backward compatibility with
- * existing callers (ovrProjector, coaches tab, etc.) while delegating to engineMath.
+ * existing callers (ovrProjector, investment tab, etc.) while delegating to engineMath.
  *
  * To tune a constant: update profiles/logistics_v1.json.
  * To understand a formula: read src/engine/engineMath.ts.
@@ -12,97 +12,109 @@
 
 import { GameProfile, TalentTier, TierName } from '../types/resources';
 import {
-  xpCostAtStat,
-  ageMultiplier,
+  costAtMetric,
+  maturityMultiplier,
   combinedMultiplier,
-  starsGainedFromOvrGain,
-  statGainFromBudget,
-  ovrFromStats,
-  ovrFromStatsWithPadding,
-  applySeasonDecay,
+  thresholdsCrossedFromCciGain,
+  metricGainFromBudget,
+  cciFromMetrics,
+  cciFromMetricsWithPadding,
+  applyPeriodicDegradation,
 } from '../engine/engineMath';
-import { SEASON_DECAY } from '../engine/engineConstants';
+import { PERIODIC_DEGRADATION } from '../engine/engineConstants';
 
 // Re-export engineMath functions for callers that don't need GameProfile wrappers
 export {
-  xpCostAtStat,
-  ageMultiplier as getAgeMultiplierDirect,
+  costAtMetric,
+  maturityMultiplier as getMaturityMultiplierDirect,
   combinedMultiplier,
-  starsGainedFromOvrGain,
-  statGainFromBudget,
-  ovrFromStats,
-  ovrFromStatsWithPadding,
-  estimateTalentFromGain,
+  thresholdsCrossedFromCciGain,
+  metricGainFromBudget,
+  cciFromMetrics,
+  cciFromMetricsWithPadding,
+  estimateEfficiencyClassFromGain,
 } from '../engine/engineMath';
 
 // ─── GameProfile wrappers (backward compatibility) ───────────────────────────
 
-/** XP cost per stat point at a given stat value. Delegates to engineMath.xpCostAtStat. */
+/** Resource cost per metric point at a given metric value. Delegates to engineMath.costAtMetric. */
 export function xpBaseForStat(statValue: number, _profile: GameProfile): number {
-  return xpCostAtStat(statValue);
+  return costAtMetric(statValue);
 }
 
-/** Age multiplier for a given age. Delegates to engineMath.ageMultiplier. */
-export function getAgeMultiplier(age: number, _profile: GameProfile): number {
-  return ageMultiplier(age);
+/** Maturity multiplier for a given maturity index. Delegates to engineMath.maturityMultiplier. */
+export function getAgeMultiplier(maturityIndex: number, _profile: GameProfile): number {
+  return maturityMultiplier(maturityIndex);
 }
 
 /**
- * XP required to gain 1 stat point at the given value, with all multipliers applied.
- * Delegates to engineMath.combinedMultiplier + engineMath.xpCostAtStat.
- *
- * @param starsGainedInSession - cumulative stars earned in the current session so far
+ * Resources required to gain 1 metric point at the given value, with all multipliers applied.
+ * Delegates to engineMath.combinedMultiplier + engineMath.costAtMetric.
  */
 export function xpNeededFor1Pct(
   statValue: number,
-  age: number,
-  starsGainedInSession: number,
-  talent: TalentTier,
-  isWhite: boolean,
-  twoxAd: boolean,
-  drillLevelMult: number,
+  maturityIndex: number,
+  thresholdsInSession: number,
+  efficiencyClass: TalentTier,
+  isPrimary: boolean,
+  boostActive: boolean,
+  cycleIntensityMult: number,
   _profile: GameProfile,
 ): number {
-  const base = xpCostAtStat(statValue);
+  const base = costAtMetric(statValue);
   if (!isFinite(base)) return Infinity;
-  const mult = combinedMultiplier({ age, talent, isWhite, starsGained: starsGainedInSession, twoxAd, drillLevelMult });
+  const mult = combinedMultiplier({
+    maturityIndex,
+    efficiencyClass,
+    isPrimary,
+    thresholdsCrossed: thresholdsInSession,
+    boostActive,
+    cycleIntensityMult,
+  });
   if (mult === 0) return Infinity;
   return base / mult;
 }
 
 /**
- * Estimates fractional stat gain for a given XP budget.
- * Delegates to engineMath.statGainFromBudget.
+ * Estimates fractional metric gain for a given resource budget.
+ * Delegates to engineMath.metricGainFromBudget.
  */
 export function estimateStatGainPct(
   xpBudget: number,
   statValue: number,
-  age: number,
-  starsGainedInSession: number,
-  talent: TalentTier,
-  isWhite: boolean,
-  twoxAd: boolean,
-  drillLevelMult: number,
+  maturityIndex: number,
+  thresholdsInSession: number,
+  efficiencyClass: TalentTier,
+  isPrimary: boolean,
+  boostActive: boolean,
+  cycleIntensityMult: number,
   _profile: GameProfile,
 ): number {
-  const mult = combinedMultiplier({ age, talent, isWhite, starsGained: starsGainedInSession, twoxAd, drillLevelMult });
-  return statGainFromBudget(statValue, xpBudget, mult);
+  const mult = combinedMultiplier({
+    maturityIndex,
+    efficiencyClass,
+    isPrimary,
+    thresholdsCrossed: thresholdsInSession,
+    boostActive,
+    cycleIntensityMult,
+  });
+  return metricGainFromBudget(statValue, xpBudget, mult);
 }
 
 /**
- * Projects stats after seasonal decay.
- * Delegates to engineMath.applySeasonDecay.
+ * Projects metrics after periodic degradation.
+ * Delegates to engineMath.applyPeriodicDegradation.
  */
 export function projectSeasonDecay(
   stats: Record<string, number>,
   levelsPromoted: number,
   profile: GameProfile,
 ): Record<string, number> {
-  return applySeasonDecay(stats, levelsPromoted, profile.seasonDecayPerLevel ?? SEASON_DECAY);
+  return applyPeriodicDegradation(stats, levelsPromoted, profile.periodicDegradationPerStage ?? PERIODIC_DEGRADATION);
 }
 
 /**
- * Quality% = sum of all stats / totalAttributeCount (unweighted mean × 15).
+ * Quality% = sum of all metrics / metricCount (unweighted mean × metricCount).
  * Used as an intermediate before qualityPctToOvr.
  */
 export function statsToQualityPct(
@@ -111,38 +123,37 @@ export function statsToQualityPct(
 ): number {
   const values = Object.values(stats);
   if (values.length === 0) return 0;
-  return values.reduce((acc, v) => acc + v, 0) / profile.totalAttributeCount;
+  return values.reduce((acc, v) => acc + v, 0) / profile.metricCount;
 }
 
-/** OVR = floor(qualityPct / qualityOvrDivisor). Delegates to ovrFromStats. */
+/** CCI = floor(qualityPct / cciDivisorScale). Delegates to cciFromMetrics. */
 export function qualityPctToOvr(qualityPct: number, profile: GameProfile): number {
-  // qualityPct is already sum/15, so multiply back to sum then use ovrFromStats logic
-  const sum = qualityPct * profile.totalAttributeCount;
-  return Math.floor(sum / (profile.totalAttributeCount * profile.qualityOvrDivisor));
+  const sum = qualityPct * profile.metricCount;
+  return Math.floor(sum / (profile.metricCount * profile.cciDivisorScale));
 }
 
 /**
- * Applies a tier upgrade by adding the incremental bonus to white (essential) stats only.
- * Grey role stats and off-role stats receive NO change — confirmed from direct game observation.
- * Returns a new stats object (does not mutate input).
+ * Applies a lifecycle stage upgrade by adding the incremental bonus to primary (essential) metrics only.
+ * Secondary and off-category metrics receive NO change.
+ * Returns a new metrics object (does not mutate input).
  */
 export function applyTierBonusToStats(
   stats: Record<string, number>,
-  roleStatKeys: string[],
+  primaryMetricKeys: string[],
   targetTier: TierName,
   profile: GameProfile,
   fromTier: TierName = 'T0',
 ): Record<string, number> {
-  const totalAddition = profile.tierAttrAdditions[targetTier] ?? 0;
-  const prevAddition  = profile.tierAttrAdditions[fromTier]   ?? 0;
+  const totalAddition = profile.stageMetricAdditions[targetTier] ?? 0;
+  const prevAddition  = profile.stageMetricAdditions[fromTier]   ?? 0;
   const increment = totalAddition - prevAddition;
   if (increment <= 0) return { ...stats };
 
-  const roleSet = new Set(roleStatKeys);
+  const roleSet = new Set(primaryMetricKeys);
   const updated = { ...stats };
   for (const key of Object.keys(updated)) {
     if (roleSet.has(key)) {
-      updated[key] = Math.min(updated[key] + increment, profile.statCap);
+      updated[key] = Math.min(updated[key] + increment, profile.metricCap);
     }
   }
   return updated;

@@ -15,63 +15,63 @@ _PROFILE_PATH = os.path.join(
 with open(_PROFILE_PATH) as _f:
     _p = json.load(_f)
 
-# XP cost curve
-C0: float = float(_p['xpCostBase'])        # 2.94
-K: float  = float(_p['xpCostDecayK'])      # 47
+# Cost curve
+COST_CURVE_BASE: float  = float(_p['costCurveBase'])   # 2.94
+COST_CURVE_DECAY: float = float(_p['costCurveDecay'])  # 47
 
-# Session budget
-BASE_XPS: float             = float(_p['baseXpPerSession'])   # 676
-SESSION_BUDGET_DECAY: float = float(_p['sessionBudgetDecay']) # 0.99
-DRILL_XP_FACTOR: float      = float(_p.get('drillXpFactor', 0.3))
+# Cycle budget
+BASE_RESOURCES_PER_CYCLE: float  = float(_p['baseResourcesPerCycle'])  # 676
+CYCLE_BUDGET_DECAY: float        = float(_p.get('cycleBudgetDecay', 1.0))
+CONDITIONING_RESOURCE_FACTOR: float = float(_p.get('conditioningResourceFactor', 0.3))
 
 # Multipliers
-GREY_MULT: float = float(_p['greyWeightMultiplier'])  # 0.22
+SECONDARY_METRIC_WEIGHT: float = float(_p['secondaryMetricWeight'])  # 0.22
 
-AGE_TABLE: dict[str, float] = {
-    str(k): float(v) for k, v in _p['ageTable'].items()
+MATURITY_MULTS: dict[str, float] = {
+    str(k): float(v) for k, v in _p['maturityMultipliers'].items()
 }
-TALENT_MULTS: dict[str, float] = {
-    k: float(v) for k, v in _p['talentMultipliers'].items()
-}
-
-STAR_DECAY: float         = float(_p['starDecayPerSession'])  # 0.85
-STAR_OVR_THRESHOLD: float = float(_p['starOvrThreshold'])     # 20
-TWOX_AD_MULT: float       = float(_p['twoxAdMultiplier'])     # 2.0
-
-# OVR formula
-TOTAL_ATTRS: int  = int(_p['totalAttributeCount'])  # 15
-OVR_DIVISOR: int  = int(_p['qualityOvrDivisor'])    # 1
-
-# Tier system
-TIER_ADDITIONS: dict[str, int] = {
-    k: int(v) for k, v in _p['tierAttrAdditions'].items()
+EFFICIENCY_CLASS_MULTS: dict[str, float] = {
+    k: float(v) for k, v in _p['efficiencyClassMultipliers'].items()
 }
 
-# Training lock
-MAX_BASE_OVR: int = int(_p['maxBaseOvr'])  # 180
+THRESHOLD_DECAY_FACTOR: float  = float(_p['thresholdDecayFactor'])  # 0.85
+THRESHOLD_CCI_INCREMENT: float = float(_p['thresholdCciIncrement'])  # 20
+BOOST_MULTIPLIER: float        = float(_p['boostMultiplier'])        # 2.0
 
-# Condition system
-COND_LEVEL_MULTS: dict[str, float] = {
-    k: float(v) for k, v in _p['condLevelMultipliers'].items()
+# CCI formula
+METRIC_COUNT: int      = int(_p['metricCount'])      # 10
+CCI_DIVISOR_SCALE: int = int(_p['cciDivisorScale'])  # 1
+
+# Stage system
+STAGE_METRIC_ADDITIONS: dict[str, int] = {
+    k: int(v) for k, v in _p['stageMetricAdditions'].items()
 }
-FAN_COND_REDUCTION: list[float] = [float(v) for v in _p['fanClubCondReduction']]
-BASE_LOSS_PER_DRILL: float  = float(_p['baseLossPerDrill'])    # 0.75
-ZERO_DRAIN_THRESHOLD: float = float(_p['zeroDrainThreshold'])  # 0.38
-CONDITION_PER_RESTORER: float = float(_p['conditionPerRestorer'])  # 15
 
-# Stat cap
-STAT_CAP: float = float(_p['statCap'])  # 9999
+# Investment lock
+CAPACITY_CEILING: int = int(_p['capacityCeiling'])  # 180
 
-# Season decay
-SEASON_DECAY_PER_LEVEL: float = float(_p['seasonDecayPerLevel'])  # 20
+# Readiness system
+INTENSITY_MULTS: dict[str, float] = {
+    k: float(v) for k, v in _p['intensityMultipliers'].items()
+}
+SUPPORT_DRAIN_REDUCTION: list[float] = [float(v) for v in _p['supportDrainReduction']]
+BASE_DRAIN_PER_CYCLE: float  = float(_p['baseDrainPerCycle'])    # 0.75
+ZERO_DRAIN_THRESHOLD: float  = float(_p['zeroDrainThreshold'])   # 0.38
+READINESS_PER_RESTORATION: float = float(_p['readinessPerRestoration'])  # 15
 
-# Derived: sorted age breakpoints (ascending)
-_AGE_KEYS_SORTED: list[int] = sorted(int(a) for a in AGE_TABLE)
-AGE_MIN: int = _AGE_KEYS_SORTED[0]   # 17
-AGE_MAX: int = _AGE_KEYS_SORTED[-1]  # 30
+# Metric cap
+METRIC_CAP: float = float(_p['metricCap'])  # 9999
+
+# Periodic degradation
+PERIODIC_DEGRADATION: float = float(_p.get('periodicDegradationPerStage', 20.0))  # 20
+
+# Derived: sorted maturity breakpoints (ascending)
+_MATURITY_KEYS_SORTED: list[int] = sorted(int(a) for a in MATURITY_MULTS)
+MATURITY_MIN: int = _MATURITY_KEYS_SORTED[0]   # lowest defined maturity index
+MATURITY_MAX: int = _MATURITY_KEYS_SORTED[-1]  # highest defined maturity index
 
 # Efficiency class ordering (Degraded → Class-A, strictly increasing mult)
-TALENT_ORDER: list[str] = ['Degraded', 'Standard', 'Class-A']
+EFFICIENCY_CLASS_ORDER: list[str] = ['Degraded', 'Standard', 'Class-A']
 
 
 # ── Constant provenance accessor (Phase B5) ───────────────────────────────────

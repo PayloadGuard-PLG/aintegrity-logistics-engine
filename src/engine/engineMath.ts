@@ -2,174 +2,168 @@
  * engineMath.ts — Pure, isolated math functions for every projection stage.
  *
  * Rules:
- *   - No React Native imports. No database. No full GameProfile objects.
+ *   - No React Native imports. No database. No full profile objects.
  *   - Each function takes primitives, returns a value.
  *   - Each stage can be tuned, tested, or replaced independently.
  *   - Compounding effects are explicit in combinedMultiplier().
  *
- * Pipeline order (enforced by game mechanics):
- *   Drills → Coaching → Tier Upgrade → Restorers (condition only)
+ * Pipeline order (enforced by domain mechanics):
+ *   Conditioning → Investment → Lifecycle Stage Upgrade → Restoration (readiness only)
  *
  * Stage map:
- *   1. xpCostAtStat       — cost curve: how expensive each stat point is
- *   2. ageMultiplier       — age efficiency factor
- *   3. talentMultiplier    — talent efficiency factor
- *   4. greyMultiplier      — white vs grey stat weight
- *   5. starDecayMultiplier — in-session decay as OVR accumulates
- *   6. combinedMultiplier  — compounded efficiency (all factors in one place)
- *   7. coachBudgetPerStat  — XP available per stat for a coaching session
- *   8. drillBudgetPerStat  — XP available per stat for a drill session
- *   9. statGainFromBudget  — integral: how many stat points the budget buys
- *  10. ovrFromStats        — OVR formula: floor(sum / 15)
- *  11. tierOvrContrib      — tier's OVR contribution
- *  12. baseOvrFromTotal    — base OVR (total minus tier contrib)
- *  13. isTrainingLocked    — training lock check (base OVR ≥ 180)
- *  14. conditionDrainPct   — condition lost per drill
- *  15. isZeroDrain         — zero-drain detection
- *  16. conditionRestoredPct — condition from restorers
+ *   1. costAtMetric            — cost curve: how expensive each metric point is
+ *   2. maturityMultiplier      — maturity efficiency factor
+ *   3. efficiencyClassMultiplier — efficiency class factor
+ *   4. metricWeightMultiplier  — primary vs secondary metric weight
+ *   5. thresholdDecayMultiplier — in-cycle decay as CCI accumulates
+ *   6. combinedMultiplier      — compounded efficiency (all factors in one place)
+ *   7. investmentBudgetPerMetric — resources available per metric for an investment cycle
+ *   8. conditioningBudgetPerMetric — resources per metric for a conditioning cycle
+ *   9. metricGainFromBudget    — integral: how many metric points the budget buys
+ *  10. cciFromMetrics          — CCI formula: floor(sum / metricCount)
+ *  11. stageCciContrib         — lifecycle stage CCI contribution
+ *  12. baseCciFromTotal        — base CCI (total minus stage contrib)
+ *  13. isInvestmentLocked      — investment lock check (base CCI ≥ capacityCeiling)
+ *  14. readinessDrainPct       — readiness lost per conditioning cycle
+ *  15. isZeroDrain             — zero-drain detection
+ *  16. readinessRestoredPct    — readiness from restoration units
  */
 
 import {
-  C0, K,
-  BASE_XPS, DRILL_XP_FACTOR, SESSION_BUDGET_DECAY,
-  GREY_MULT,
-  AGE_TABLE,
-  TALENT_MULTS,
-  STAR_DECAY, STAR_OVR_THRESHOLD,
-  TWOX_AD_MULT,
-  TOTAL_ATTRS, OVR_DIVISOR,
-  TIER_ADDITIONS,
-  MAX_BASE_OVR,
-  COND_LEVEL_MULTS, FAN_COND_REDUCTION, BASE_LOSS_PER_DRILL, ZERO_DRAIN_THRESHOLD,
-  CONDITION_PER_RESTORER,
-  STAT_CAP,
+  COST_CURVE_BASE, COST_CURVE_DECAY,
+  BASE_RESOURCES_PER_CYCLE, CONDITIONING_RESOURCE_FACTOR, CYCLE_BUDGET_DECAY,
+  SECONDARY_METRIC_WEIGHT,
+  MATURITY_MULTS,
+  EFFICIENCY_CLASS_MULTS,
+  THRESHOLD_DECAY_FACTOR, THRESHOLD_CCI_INCREMENT,
+  BOOST_MULTIPLIER,
+  METRIC_COUNT, CCI_DIVISOR_SCALE,
+  STAGE_METRIC_ADDITIONS,
+  CAPACITY_CEILING,
+  INTENSITY_MULTS, SUPPORT_DRAIN_REDUCTION, BASE_DRAIN_PER_CYCLE, ZERO_DRAIN_THRESHOLD,
+  READINESS_PER_RESTORATION,
+  METRIC_CAP,
 } from './engineConstants';
 import type { CeilingRule, RuleSetEvaluation, ProjectionBand } from '../types/resources';
 
-// ─── STAGE 1: XP COST CURVE ──────────────────────────────────────────────────
-// cost(stat) = C₀ × exp(stat / K)
-// Tune: adjust C0 and/or K in game_2025.json. Only affects the cost curve — all
-// other stages (age, talent, grey, budget) are unaffected.
-export function xpCostAtStat(stat: number): number {
-  return C0 * Math.exp(stat / K);
+// ─── STAGE 1: COST CURVE ─────────────────────────────────────────────────────
+// cost(metric) = COST_CURVE_BASE × exp(metric / COST_CURVE_DECAY)
+// Tune: adjust COST_CURVE_BASE and/or COST_CURVE_DECAY in logistics_v1.json.
+export function costAtMetric(metric: number): number {
+  return COST_CURVE_BASE * Math.exp(metric / COST_CURVE_DECAY);
 }
 
-// ─── STAGE 2a: AGE MULTIPLIER ────────────────────────────────────────────────
+// ─── STAGE 2a: MATURITY MULTIPLIER ───────────────────────────────────────────
 // Lookup with linear interpolation between bracketed entries.
-// Tune: update ageTable entries in game_2025.json. Does not affect other multipliers.
-export function ageMultiplier(age: number): number {
-  const ages = Object.keys(AGE_TABLE).map(Number).sort((a, b) => a - b);
-  if (age <= ages[0]) return AGE_TABLE[ages[0].toString()];
-  for (let i = 0; i < ages.length - 1; i++) {
-    const a0 = ages[i];
-    const a1 = ages[i + 1];
-    if (age >= a0 && age <= a1) {
-      const t  = (age - a0) / (a1 - a0);
-      const v0 = AGE_TABLE[a0.toString()];
-      const v1 = AGE_TABLE[a1.toString()];
+// Tune: update maturityMultipliers in logistics_v1.json.
+export function maturityMultiplier(maturityIndex: number): number {
+  const keys = Object.keys(MATURITY_MULTS).map(Number).sort((a, b) => a - b);
+  if (maturityIndex <= keys[0]) return MATURITY_MULTS[keys[0].toString()];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k0 = keys[i];
+    const k1 = keys[i + 1];
+    if (maturityIndex >= k0 && maturityIndex <= k1) {
+      const t  = (maturityIndex - k0) / (k1 - k0);
+      const v0 = MATURITY_MULTS[k0.toString()];
+      const v1 = MATURITY_MULTS[k1.toString()];
       return Number((v0 + t * (v1 - v0)).toFixed(4));
     }
   }
-  return AGE_TABLE[ages[ages.length - 1].toString()];
+  return MATURITY_MULTS[keys[keys.length - 1].toString()];
 }
 
-// ─── STAGE 2b: TALENT MULTIPLIER ─────────────────────────────────────────────
-// Tune: update talentMultipliers in game_2025.json. Isolated from cost curve and age.
-export function talentMultiplier(talent: string): number {
-  return TALENT_MULTS[talent] ?? 1.0;
+// ─── STAGE 2b: EFFICIENCY CLASS MULTIPLIER ───────────────────────────────────
+// Tune: update efficiencyClassMultipliers in logistics_v1.json.
+export function efficiencyClassMultiplier(efficiencyClass: string): number {
+  return EFFICIENCY_CLASS_MULTS[efficiencyClass] ?? 1.0;
 }
 
-// ─── STAGE 2c: GREY STAT WEIGHT ──────────────────────────────────────────────
-// White stats: 1.0. Grey (secondary) stats: GREY_MULT (0.22 → ~4.5× more expensive).
-// Tune: update greyWeightMultiplier in game_2025.json. Only affects grey stat costs.
-export function greyMultiplier(isWhite: boolean): number {
-  return isWhite ? 1.0 : GREY_MULT;
+// ─── STAGE 2c: METRIC WEIGHT MULTIPLIER ──────────────────────────────────────
+// Primary metrics: 1.0. Secondary metrics: SECONDARY_METRIC_WEIGHT (~4.5× more expensive).
+// Tune: update secondaryMetricWeight in logistics_v1.json.
+export function metricWeightMultiplier(isPrimary: boolean): number {
+  return isPrimary ? 1.0 : SECONDARY_METRIC_WEIGHT;
 }
 
-// ─── STAGE 2d: STAR DECAY ────────────────────────────────────────────────────
-// Efficiency decays as the player earns stars within a single session.
-// starsGained = floor(sessionOvrGainSoFar / STAR_OVR_THRESHOLD)
-// Tune: update starDecayPerSession or starOvrThreshold in game_2025.json.
-export function starsGainedFromOvrGain(sessionOvrGain: number): number {
-  return Math.floor(sessionOvrGain / STAR_OVR_THRESHOLD);
+// ─── STAGE 2d: THRESHOLD DECAY ───────────────────────────────────────────────
+// Efficiency decays as the asset crosses performance thresholds within a single cycle.
+// thresholdsCrossed = floor(sessionCciGainSoFar / THRESHOLD_CCI_INCREMENT)
+// Tune: update thresholdDecayFactor or thresholdCciIncrement in logistics_v1.json.
+export function thresholdsCrossedFromCciGain(sessionCciGain: number): number {
+  return Math.floor(sessionCciGain / THRESHOLD_CCI_INCREMENT);
 }
 
-export function starDecayMultiplier(starsGained: number): number {
-  return Math.pow(STAR_DECAY, starsGained);
+export function thresholdDecayMultiplier(thresholdsCrossed: number): number {
+  return Math.pow(THRESHOLD_DECAY_FACTOR, thresholdsCrossed);
 }
 
 // ─── STAGE 3: COMBINED MULTIPLIER ────────────────────────────────────────────
-// This is the full compounding efficiency chain applied as a divisor on XP cost.
-// Higher combinedMultiplier = cheaper training = more stat gain per XP.
+// Full compounding efficiency chain applied as a divisor on resource cost.
+// Higher combinedMultiplier = cheaper intervention = more metric gain per resource.
 //
-// Formula: ageMult × talentMult × greyMult × starDecay × adMult × drillLevelMult
+// Formula: maturityMult × efficiencyClassMult × metricWeightMult × thresholdDecay × boostMult × cycleIntensityMult
 //
 // Each factor is independent — tuning one does not change any other.
-// This is the single place where compounding effects are composed.
 export function combinedMultiplier(params: {
-  age: number;
-  talent: string;
-  isWhite: boolean;
-  starsGained: number;
-  twoxAd: boolean;
-  drillLevelMult: number;
+  maturityIndex: number;
+  efficiencyClass: string;
+  isPrimary: boolean;
+  thresholdsCrossed: number;
+  boostActive: boolean;
+  cycleIntensityMult: number;
 }): number {
-  const { age, talent, isWhite, starsGained, twoxAd, drillLevelMult } = params;
-  const am = ageMultiplier(age);
-  const tm = talentMultiplier(talent);
-  const gm = greyMultiplier(isWhite);
-  const sm = starDecayMultiplier(starsGained);
-  const ad = twoxAd ? TWOX_AD_MULT : 1.0;
-  return am * tm * gm * sm * ad * drillLevelMult;
+  const { maturityIndex, efficiencyClass, isPrimary, thresholdsCrossed, boostActive, cycleIntensityMult } = params;
+  const mm = maturityMultiplier(maturityIndex);
+  const em = efficiencyClassMultiplier(efficiencyClass);
+  const wm = metricWeightMultiplier(isPrimary);
+  const td = thresholdDecayMultiplier(thresholdsCrossed);
+  const bm = boostActive ? BOOST_MULTIPLIER : 1.0;
+  return mm * em * wm * td * bm * cycleIntensityMult;
 }
 
-// ─── STAGE 4a: COACHING BUDGET ───────────────────────────────────────────────
-// XP available per stat for a coaching session.
-// budget = effectiveSessions × BASE_XPS / detectedStatCount
-// detectedStatCount is whatever the scanner found with gain ranges — no assumed category sizes.
-// Tune: update baseXpPerSession or sessionBudgetDecay in game_2025.json.
-// Each successive session delivers SESSION_BUDGET_DECAY × the previous session's XP.
-// effectiveSessions = (1 - decay^N) / (1 - decay) — plateaus at 1/(1-decay) for large N.
-// With decay=0.99: ×4 ≈ 3.94, ×40 ≈ 33.1, ×114 ≈ 68.2 (vs linear 4, 40, 114).
-export function coachBudgetPerStat(sessions: number, selectedStats: string[]): number {
-  if (selectedStats.length === 0) return 0;
-  const decay = SESSION_BUDGET_DECAY;
-  const effectiveSessions = (decay >= 1.0 || sessions <= 0)
-    ? sessions
-    : (1 - Math.pow(decay, sessions)) / (1 - decay);
-  return (effectiveSessions * BASE_XPS) / selectedStats.length;
+// ─── STAGE 4a: INVESTMENT BUDGET ─────────────────────────────────────────────
+// Resources available per metric for an investment cycle.
+// budget = effectiveCycles × BASE_RESOURCES_PER_CYCLE / detectedMetricCount
+// Each successive cycle delivers CYCLE_BUDGET_DECAY × the previous cycle's resources.
+// effectiveCycles = (1 - decay^N) / (1 - decay) — plateaus at 1/(1-decay) for large N.
+export function investmentBudgetPerMetric(cycles: number, selectedMetrics: string[]): number {
+  if (selectedMetrics.length === 0) return 0;
+  const decay = CYCLE_BUDGET_DECAY;
+  const effectiveCycles = (decay >= 1.0 || cycles <= 0)
+    ? cycles
+    : (1 - Math.pow(decay, cycles)) / (1 - decay);
+  return (effectiveCycles * BASE_RESOURCES_PER_CYCLE) / selectedMetrics.length;
 }
 
-// ─── STAGE 4b: DRILL BUDGET ──────────────────────────────────────────────────
-// XP available per stat for a drill session.
-// budget = cycles × BASE_XPS × DRILL_XP_FACTOR / numStatsDrilled
-// ⚠️ DRILL_XP_FACTOR = 0.3 is uncalibrated. Tune when controlled drill data is available.
-export function drillBudgetPerStat(cycles: number, numStatsDrilled: number): number {
-  if (numStatsDrilled <= 0) return 0;
-  return (cycles * BASE_XPS * DRILL_XP_FACTOR) / numStatsDrilled;
+// ─── STAGE 4b: CONDITIONING BUDGET ───────────────────────────────────────────
+// Resources available per metric for a conditioning cycle.
+// ⚠️ CONDITIONING_RESOURCE_FACTOR = 0.3 is uncalibrated.
+export function conditioningBudgetPerMetric(cycles: number, numMetrics: number): number {
+  if (numMetrics <= 0) return 0;
+  return (cycles * BASE_RESOURCES_PER_CYCLE * CONDITIONING_RESOURCE_FACTOR) / numMetrics;
 }
 
-// ─── STAGE 5: STAT GAIN FROM BUDGET ─────────────────────────────────────────
-// Core training integral. Iterates 1 stat point at a time from startStat.
-// Each point costs: xpCostAtStat(current) / combinedMultiplier
-// Fractional remainder banks as sub-integer progress (internal game state).
+// ─── STAGE 5: METRIC GAIN FROM BUDGET ────────────────────────────────────────
+// Core intervention integral. Iterates 1 metric point at a time from startMetric.
+// Each point costs: costAtMetric(current) / combinedMultiplier
+// Fractional remainder banks as sub-integer progress.
 //
-// Tune cost curve (stages 1) or multiplier (stage 3) independently without changing this.
-export function statGainFromBudget(
-  startStat: number,
+// Tune cost curve (stage 1) or multiplier (stage 3) independently without changing this.
+export function metricGainFromBudget(
+  startMetric: number,
   budget: number,
   mult: number,
 ): number {
   if (mult <= 0 || budget <= 0) return 0;
   let remaining = budget;
   let gain      = 0;
-  let current   = startStat;
+  let current   = startMetric;
 
-  while (remaining > 0 && current < STAT_CAP) {
-    const cost = xpCostAtStat(current) / mult;
+  while (remaining > 0 && current < METRIC_CAP) {
+    const cost = costAtMetric(current) / mult;
     if (!isFinite(cost) || cost <= 0) break;
     if (cost > remaining) {
-      gain += remaining / cost;  // fractional: bank partial progress
+      gain += remaining / cost;
       break;
     }
     remaining -= cost;
@@ -179,47 +173,43 @@ export function statGainFromBudget(
   return gain;
 }
 
-// ─── STAGE 6: OVR FORMULA ────────────────────────────────────────────────────
-// OVR = floor(sum(all 15 stats) / 15)
-// Confirmed ✅ from Grant T2→T3 clean tier upgrade. floor wins over ceil/round.
-export function ovrFromStats(stats: Record<string, number>): number {
-  if (Object.keys(stats).length === 0) return 0;
-  const sum = Object.values(stats).reduce((a, b) => a + b, 0);
-  return Math.floor(sum / (TOTAL_ATTRS * OVR_DIVISOR));
+// ─── STAGE 6: CCI FORMULA ────────────────────────────────────────────────────
+// CCI = floor(sum(all metrics) / metricCount)
+export function cciFromMetrics(metrics: Record<string, number>): number {
+  if (Object.keys(metrics).length === 0) return 0;
+  const sum = Object.values(metrics).reduce((a, b) => a + b, 0);
+  return Math.floor(sum / (METRIC_COUNT * CCI_DIVISOR_SCALE));
 }
 
-// OVR from stats map with padding for missing stats (uses known overall as baseline).
-// Needed when only some stats are entered — avoids treating missing stats as 0.
-export function ovrFromStatsWithPadding(
-  stats: Record<string, number>,
-  knownOverall: number,
+// CCI from metrics map with padding for missing metrics (uses known CCI as baseline).
+export function cciFromMetricsWithPadding(
+  metrics: Record<string, number>,
+  knownCci: number,
 ): number {
-  const keys = Object.keys(stats);
-  if (keys.length === 0) return knownOverall;
-  const entered      = Object.values(stats).reduce((a, b) => a + b, 0);
-  const missingCount = Math.max(0, TOTAL_ATTRS - keys.length);
-  const sum          = entered + knownOverall * missingCount;
-  return Math.floor(sum / (TOTAL_ATTRS * OVR_DIVISOR));
+  const keys = Object.keys(metrics);
+  if (keys.length === 0) return knownCci;
+  const entered      = Object.values(metrics).reduce((a, b) => a + b, 0);
+  const missingCount = Math.max(0, METRIC_COUNT - keys.length);
+  const sum          = entered + knownCci * missingCount;
+  return Math.floor(sum / (METRIC_COUNT * CCI_DIVISOR_SCALE));
 }
 
-// ─── STAGE 7: TIER CONTRIBUTION ──────────────────────────────────────────────
-// Tier OVR contribution = floor(tierBonus × whiteStatCount / 15)
-// Example: Stellar (T3, +50) × 12 white stats = 600 / 15 = 40 OVR.
-export function tierOvrContrib(tier: string, whiteStatCount: number): number {
-  const bonus = TIER_ADDITIONS[tier] ?? 0;
-  return Math.floor((bonus * whiteStatCount) / TOTAL_ATTRS);
+// ─── STAGE 7: LIFECYCLE STAGE CONTRIBUTION ───────────────────────────────────
+// Stage CCI contribution = floor(stageBonus × primaryMetricCount / metricCount)
+export function stageCciContrib(stage: string, primaryMetricCount: number): number {
+  const bonus = STAGE_METRIC_ADDITIONS[stage] ?? 0;
+  return Math.floor((bonus * primaryMetricCount) / METRIC_COUNT);
 }
 
-// ─── STAGE 8: TRAINING LOCK ──────────────────────────────────────────────────
-// Base OVR = total OVR − tier OVR contribution.
-// Training locks when base OVR ≥ MAX_BASE_OVR (180).
-// The 180 cap applies to base OVR only — tier bonuses push total OVR beyond 180 normally.
-export function baseOvrFromTotal(
-  totalOvr: number,
-  tier: string,
-  whiteStatCount: number,
+// ─── STAGE 8: INVESTMENT LOCK ─────────────────────────────────────────────────
+// Base CCI = total CCI − stage CCI contribution.
+// Investment locks when base CCI ≥ CAPACITY_CEILING.
+export function baseCciFromTotal(
+  totalCci: number,
+  stage: string,
+  primaryMetricCount: number,
 ): number {
-  return totalOvr - tierOvrContrib(tier, whiteStatCount);
+  return totalCci - stageCciContrib(stage, primaryMetricCount);
 }
 
 export function evaluateRuleSet(
@@ -239,44 +229,43 @@ export function evaluateRuleSet(
   return { locked: triggered.length > 0, triggeredRules: triggered };
 }
 
-export function isTrainingLocked(baseOvr: number): boolean {
+export function isInvestmentLocked(baseCci: number): boolean {
   return evaluateRuleSet(
-    { '__base_cci__': baseOvr },
-    [{ parameter: '__base_cci__', operator: '>=', threshold: MAX_BASE_OVR,
-       source: 'profile.maxBaseOvr', polarity: 'lock-when-good' }],
+    { '__base_cci__': baseCci },
+    [{ parameter: '__base_cci__', operator: '>=', threshold: CAPACITY_CEILING,
+       source: 'profile.capacityCeiling', polarity: 'lock-when-good' }],
   ).locked;
 }
 
-// ─── STAGE 9: CONDITION DRAIN ────────────────────────────────────────────────
-// conditionLoss = baseLoss × intensityMult × (1 − fanClubReduction / 100)
-// Zero-drain fires when loss < ZERO_DRAIN_THRESHOLD (0.375%).
-// Only Very Easy + Fan Club L4 qualifies (0.375%).
-export function conditionDrainPct(drillIntensity: string, fanLevel: number): number {
-  const intMult = COND_LEVEL_MULTS[drillIntensity] ?? 1;
-  const fanRed  = FAN_COND_REDUCTION[fanLevel] ?? 0;
-  return BASE_LOSS_PER_DRILL * intMult * (1 - fanRed / 100);
+// ─── STAGE 9: READINESS DRAIN ────────────────────────────────────────────────
+// readinessLoss = baseDrain × intensityMult × (1 − supportReduction / 100)
+// Zero-drain fires when loss < ZERO_DRAIN_THRESHOLD.
+export function readinessDrainPct(cycleIntensity: string, supportLevel: number): number {
+  const intMult  = INTENSITY_MULTS[cycleIntensity] ?? 1;
+  const suppRed  = SUPPORT_DRAIN_REDUCTION[supportLevel] ?? 0;
+  return BASE_DRAIN_PER_CYCLE * intMult * (1 - suppRed / 100);
 }
 
 export function isZeroDrain(drainPct: number): boolean {
   return drainPct < ZERO_DRAIN_THRESHOLD;
 }
 
-// ─── STAGE 10: CONDITION RESTORATION ─────────────────────────────────────────
-// 15% condition per restorer, capped at 100%.
-export function conditionRestoredPct(restorers: number): number {
-  return Math.min(restorers * CONDITION_PER_RESTORER, 100);
+// ─── STAGE 10: READINESS RESTORATION ─────────────────────────────────────────
+// READINESS_PER_RESTORATION % readiness per restoration unit, capped at 100%.
+export function readinessRestoredPct(restorationUnits: number): number {
+  return Math.min(restorationUnits * READINESS_PER_RESTORATION, 100);
 }
 
-// ─── SEASON DECAY ────────────────────────────────────────────────────────────
-// Flat 20 pts per level promoted. White and grey drop equally. Not proportional.
-export function applySeasonDecay(
-  stats: Record<string, number>,
-  levelsPromoted: number,
-  decayPerLevel: number,
+// ─── PERIODIC DEGRADATION ────────────────────────────────────────────────────
+// Flat drop per lifecycle period. Primary and secondary metrics drop equally.
+export function applyPeriodicDegradation(
+  metrics: Record<string, number>,
+  periodCount: number,
+  degradationPerPeriod: number,
 ): Record<string, number> {
-  const drop   = decayPerLevel * levelsPromoted;
+  const drop   = degradationPerPeriod * periodCount;
   const result: Record<string, number> = {};
-  for (const [key, value] of Object.entries(stats)) {
+  for (const [key, value] of Object.entries(metrics)) {
     result[key] = Math.max(0, value - drop);
   }
   return result;
@@ -303,44 +292,41 @@ export function applyIntervention(
   return result;
 }
 
-// ─── TALENT BACK-CALCULATION ─────────────────────────────────────────────────
-// Given observed gain from a coach scan, find which talent tier best explains it.
-// Uses only the white-stat path for cleaner signal (grey multiplier adds noise).
-// bestTier = tier whose forward prediction is closest to gainMid.
-// confidence = 'high' if best score < 20% of gainMid, else 'low'.
-export function estimateTalentFromGain(params: {
-  statBefore: number;
+// ─── EFFICIENCY CLASS BACK-CALCULATION ───────────────────────────────────────
+// Given observed gain from an investment cycle scan, find which efficiency class best explains it.
+export function estimateEfficiencyClassFromGain(params: {
+  metricBefore: number;
   gainMid: number;
-  sessions: number;
-  statNames: string[];
+  cycles: number;
+  metricNames: string[];
   categorySize: number;
-  age: number;
-  isWhite: boolean;
-  twoxAd: boolean;
-  drillLevelMult: number;
-}): { bestTier: string; confidence: 'high' | 'low'; candidateScores: Record<string, number> } {
-  const { statBefore, gainMid, sessions, categorySize, age, isWhite, twoxAd, drillLevelMult } = params;
-  const decay = SESSION_BUDGET_DECAY;
-  const effectiveSessions = (decay >= 1.0 || sessions <= 0)
-    ? sessions
-    : (1 - Math.pow(decay, sessions)) / (1 - decay);
-  const budget = (effectiveSessions * BASE_XPS) / categorySize;
-  const tiers = ['Fastest', 'Fast', 'Average', 'Normal', 'Slow'];
+  maturityIndex: number;
+  isPrimary: boolean;
+  boostActive: boolean;
+  cycleIntensityMult: number;
+}): { bestClass: string; confidence: 'high' | 'low'; candidateScores: Record<string, number> } {
+  const { metricBefore, gainMid, cycles, categorySize, maturityIndex, isPrimary, boostActive, cycleIntensityMult } = params;
+  const decay = CYCLE_BUDGET_DECAY;
+  const effectiveCycles = (decay >= 1.0 || cycles <= 0)
+    ? cycles
+    : (1 - Math.pow(decay, cycles)) / (1 - decay);
+  const budget = (effectiveCycles * BASE_RESOURCES_PER_CYCLE) / categorySize;
+  const classes = Object.keys(EFFICIENCY_CLASS_MULTS);
   const candidateScores: Record<string, number> = {};
 
-  let bestTier = 'Normal';
+  let bestClass = 'Standard';
   let bestScore = Infinity;
 
-  for (const tier of tiers) {
-    const mult = combinedMultiplier({ age, talent: tier, isWhite, starsGained: 0, twoxAd, drillLevelMult });
-    const predicted = statGainFromBudget(statBefore, budget, mult);
+  for (const cls of classes) {
+    const mult = combinedMultiplier({ maturityIndex, efficiencyClass: cls, isPrimary, thresholdsCrossed: 0, boostActive, cycleIntensityMult });
+    const predicted = metricGainFromBudget(metricBefore, budget, mult);
     const score = Math.abs(predicted - gainMid);
-    candidateScores[tier] = Number(predicted.toFixed(2));
-    if (score < bestScore) { bestScore = score; bestTier = tier; }
+    candidateScores[cls] = Number(predicted.toFixed(2));
+    if (score < bestScore) { bestScore = score; bestClass = cls; }
   }
 
   const confidence: 'high' | 'low' = gainMid > 0 && bestScore < gainMid * 0.2 ? 'high' : 'low';
-  return { bestTier, confidence, candidateScores };
+  return { bestClass, confidence, candidateScores };
 }
 
 // ─── UNCERTAINTY PROPAGATION (Phase B4) ─────────────────────────────────────
@@ -350,8 +336,8 @@ export function propagateUncertainty(
   estimate:       number,
   sensitivityC0:  number,  // ∂gain/∂C0 — caller computes via finite diff
   sensitivityK:   number,  // ∂gain/∂K
-  varC0:          number,  // from ConstantMeta<number>.variance on C0
-  varK:           number,  // from ConstantMeta<number>.variance on K
+  varC0:          number,  // from ConstantMeta<number>.variance on COST_CURVE_BASE
+  varK:           number,  // from ConstantMeta<number>.variance on COST_CURVE_DECAY
   provenanceFlags: ProjectionBand['provenanceFlags'],
 ): ProjectionBand {
   const variance = Math.pow(sensitivityC0, 2) * varC0 + Math.pow(sensitivityK, 2) * varK;
@@ -365,33 +351,32 @@ export function propagateUncertainty(
   };
 }
 
-// ─── FULL COACHING PROJECTION ─────────────────────────────────────────────────
-// Composed pipeline for a single coaching session.
-// Input: session params + current stat values for the coached stats.
-// Output: projected gain (fractional) per stat name.
-// Caller is responsible for applying gains to the player record and recomputing OVR.
-export function projectCoachGains(params: {
-  sessions: number;
-  statValues: Record<string, number>;  // statName → current value for coached stats only
-  whiteStats: Set<string>;
-  age: number;
-  talent: string;
-  sessionOvrGainSoFar: number;
-  twoxAd: boolean;
-  drillLevelMult: number;  // 1.0 for all academy coaches (no intensity)
+// ─── FULL INVESTMENT PROJECTION ───────────────────────────────────────────────
+// Composed pipeline for a single investment cycle.
+// Input: cycle params + current metric values for the invested metrics.
+// Output: projected gain (fractional) per metric name.
+export function projectInvestmentGains(params: {
+  cycles: number;
+  metricValues: Record<string, number>;
+  primaryMetrics: Set<string>;
+  maturityIndex: number;
+  efficiencyClass: string;
+  sessionCciGainSoFar: number;
+  boostActive: boolean;
+  cycleIntensityMult: number;
 }): Record<string, number> {
-  const { sessions, statValues, whiteStats, age, talent, sessionOvrGainSoFar, twoxAd, drillLevelMult } = params;
-  const statNames = Object.keys(statValues);
-  if (statNames.length === 0) return {};
+  const { cycles, metricValues, primaryMetrics, maturityIndex, efficiencyClass, sessionCciGainSoFar, boostActive, cycleIntensityMult } = params;
+  const metricNames = Object.keys(metricValues);
+  if (metricNames.length === 0) return {};
 
-  const budget    = coachBudgetPerStat(sessions, statNames);
-  const stars     = starsGainedFromOvrGain(sessionOvrGainSoFar);
+  const budget     = investmentBudgetPerMetric(cycles, metricNames);
+  const thresholds = thresholdsCrossedFromCciGain(sessionCciGainSoFar);
   const result: Record<string, number> = {};
 
-  for (const [statName, startStat] of Object.entries(statValues)) {
-    const isWhite = whiteStats.has(statName);
-    const mult    = combinedMultiplier({ age, talent, isWhite, starsGained: stars, twoxAd, drillLevelMult });
-    result[statName] = statGainFromBudget(startStat, budget, mult);
+  for (const [metricName, startMetric] of Object.entries(metricValues)) {
+    const isPrimary = primaryMetrics.has(metricName);
+    const mult      = combinedMultiplier({ maturityIndex, efficiencyClass, isPrimary, thresholdsCrossed: thresholds, boostActive, cycleIntensityMult });
+    result[metricName] = metricGainFromBudget(startMetric, budget, mult);
   }
   return result;
 }

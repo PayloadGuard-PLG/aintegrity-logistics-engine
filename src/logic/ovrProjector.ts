@@ -1,7 +1,7 @@
 import { getTierAttrAddition, getTierCost } from '../utils/math';
 import { isWhiteStat, getWhiteStatKeys, getAllStatKeys } from '../utils/metricWeights';
 import { estimateStatGainPct, applyTierBonusToStats, statsToQualityPct, qualityPctToOvr } from './xpEngine';
-import { drillBudgetPerStat, ovrFromStatsWithPadding as engineOvrPadded, isTrainingLocked } from '../engine/engineMath';
+import { conditioningBudgetPerMetric, cciFromMetricsWithPadding as engineOvrPadded, isInvestmentLocked } from '../engine/engineMath';
 import { DrillSession, GameProfile, TalentTier, DrillLevel, TierName, InvestmentStep } from '../types/resources';
 import { Player } from '../database/playerSchema';
 import { DRILL_LIST } from '../database/drillDatabase';
@@ -31,9 +31,9 @@ export function computeOvrWithPadding(
   const keys = Object.keys(stats);
   if (keys.length === 0) return playerOverall;
   const entered = Object.values(stats);
-  const missingCount = Math.max(0, profile.totalAttributeCount - keys.length);
+  const missingCount = Math.max(0, profile.metricCount - keys.length);
   const sum = entered.reduce((a, b) => a + b, 0) + playerOverall * missingCount;
-  const qp = sum / profile.totalAttributeCount;
+  const qp = sum / profile.metricCount;
   return qualityPctToOvr(qp, profile);
 }
 
@@ -78,7 +78,7 @@ export function applyDrillSessionsToStats(
     const drill = findDrill(session.drillName);
     if (!drill) continue;
 
-    const drillLevelMult = profile.drillLevelMultipliers[drill.intensity] ?? 1.0;
+    const drillLevelMult = profile.cycleIntensityMultipliers[drill.intensity] ?? 1.0;
     const statDeltas: string[] = [];
 
     let drillHits = 0;
@@ -94,12 +94,12 @@ export function applyDrillSessionsToStats(
       }
       drillHits++;
       const currentVal = updatedStats[normalized];
-      if (currentVal >= profile.statCap) continue;
+      if (currentVal >= profile.metricCap) continue;
 
       const isWhite = isWhiteStat(player.role, normalized);
-      const starsGained = Math.floor((runningOvr - ovrBefore) / (profile.starOvrThreshold ?? 20));
+      const starsGained = Math.floor((runningOvr - ovrBefore) / (profile.thresholdCciIncrement ?? 20));
       const gainPct = estimateStatGainPct(
-        drillBudgetPerStat(session.sessionCount, drill.stats.length),
+        conditioningBudgetPerMetric(session.sessionCount, drill.stats.length),
         currentVal,
         player.age,
         starsGained,
@@ -111,7 +111,7 @@ export function applyDrillSessionsToStats(
       );
 
       if (gainPct > 0) {
-        updatedStats[normalized] = Math.min(currentVal + gainPct, profile.statCap);
+        updatedStats[normalized] = Math.min(currentVal + gainPct, profile.metricCap);
         statDeltas.push(`${normalized} +${gainPct}%`);
       }
     }
@@ -175,7 +175,7 @@ export function projectOvr(
     }
 
     if (player.age >= 20) {
-      const ageMult = profile.ageTable[String(player.age)] ?? 0.10;
+      const ageMult = profile.maturityMultipliers[String(player.age)] ?? 0.10;
       warnings.push(`Age ${player.age} — training multiplier ${ageMult.toFixed(2)}×. Gains are reduced.`);
     }
 
@@ -187,9 +187,9 @@ export function projectOvr(
       for (let i = fromIdx + 1; i <= toIdx; i++) {
         const stepTier = ALL_TIERS[i] as TierName;
         const prevTier = ALL_TIERS[i - 1] as TierName;
-        const inc  = (profile.tierAttrAdditions[stepTier] ?? 0) - (profile.tierAttrAdditions[prevTier] ?? 0);
-        const cost = profile.tierPointsRequired?.[stepTier] ?? getTierCost(stepTier);
-        const tierOvrGain = (inc * whiteKeys.length) / (profile.totalAttributeCount * profile.qualityOvrDivisor);
+        const inc  = (profile.stageMetricAdditions[stepTier] ?? 0) - (profile.stageMetricAdditions[prevTier] ?? 0);
+        const cost = profile.stagePointsRequired?.[stepTier] ?? getTierCost(stepTier);
+        const tierOvrGain = (inc * whiteKeys.length) / (profile.metricCount * profile.cciDivisorScale);
         const ovrBefore = currentOvr;
         currentOvr += tierOvrGain;
         steps.push({
@@ -222,14 +222,14 @@ export function projectOvr(
 
   // Training lock: base OVR = total OVR minus the tier's OVR contribution.
   // When base OVR >= maxBaseOvr (180), drills and academy coaches have no effect.
-  const tierBonus = profile.tierAttrAdditions[(player.tier as TierName) ?? 'T0'] ?? 0;
+  const tierBonus = profile.stageMetricAdditions[(player.tier as TierName) ?? 'T0'] ?? 0;
   const keyCount  = getWhiteStatKeys(player.role).length;
-  const tierOvrContrib = Math.floor(tierBonus * keyCount / profile.totalAttributeCount);
+  const tierOvrContrib = Math.floor(tierBonus * keyCount / profile.metricCount);
   const baseOvr = currentOvr - tierOvrContrib;
-  const trainingLocked = isTrainingLocked(baseOvr);
+  const trainingLocked = isInvestmentLocked(baseOvr);
 
   if (trainingLocked && sessions.length > 0) {
-    warnings.push(`Base OVR ${baseOvr} has reached the training cap (${profile.maxBaseOvr ?? 180}). Drills have no effect — tier upgrades and in-game bonuses still apply.`);
+    warnings.push(`Base OVR ${baseOvr} has reached the training cap (${profile.capacityCeiling ?? 180}). Drills have no effect — tier upgrades and in-game bonuses still apply.`);
   }
 
   if (sessions.length > 0 && !trainingLocked) {
@@ -255,7 +255,7 @@ export function projectOvr(
     warnings.push('Slow talent tier — training XP multiplier 0.70×.');
   }
   if (player.age >= 20) {
-    const ageMult = profile.ageTable[String(player.age)] ?? 0.10;
+    const ageMult = profile.maturityMultipliers[String(player.age)] ?? 0.10;
     warnings.push(`Age ${player.age} — training multiplier ${ageMult.toFixed(2)}×. Gains are reduced.`);
   }
 
@@ -268,15 +268,15 @@ export function projectOvr(
     for (let i = fromIdx + 1; i <= toIdx; i++) {
       const stepTier = ALL_TIERS[i] as TierName;
       const prevTier = ALL_TIERS[i - 1] as TierName;
-      const inc  = (profile.tierAttrAdditions[stepTier] ?? 0) - (profile.tierAttrAdditions[prevTier] ?? 0);
-      const cost = profile.tierPointsRequired?.[stepTier] ?? getTierCost(stepTier);
+      const inc  = (profile.stageMetricAdditions[stepTier] ?? 0) - (profile.stageMetricAdditions[prevTier] ?? 0);
+      const cost = profile.stagePointsRequired?.[stepTier] ?? getTierCost(stepTier);
       const ovrBefore = currentOvr;
 
       // White (essential) stats only get the tier increment; grey and off-role stats unchanged
       const newStats = { ...currentStats };
       for (const key of Object.keys(newStats)) {
         if (whiteKeySet.has(key)) {
-          newStats[key] = Math.min(newStats[key] + inc, profile.statCap);
+          newStats[key] = Math.min(newStats[key] + inc, profile.metricCap);
         }
       }
       currentStats = newStats;

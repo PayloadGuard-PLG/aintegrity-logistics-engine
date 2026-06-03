@@ -1,4 +1,4 @@
-import type { DocumentScanResult, MetricCapture } from './documentScanner';
+import type { DocumentScanResult, MetricCapture, CoachScanResult } from './documentScanner';
 import type { MetricName } from '../types/resources';
 import { DocumentScanResultSchema } from './investmentPipelineSchema';
 
@@ -57,8 +57,7 @@ export function resolveInvestmentMetrics(
   return Array.from(new Set(scan.metrics.map((m: MetricCapture) => m.metricName)));
 }
 
-// --- Backward-compatible exports (UI components use these until full migration) ---
-
+// Category metric sets for UI-driven investment cycle configuration.
 export const CATEGORY_STATS: Record<string, string[]> = {
   Attacking:   ['PASSING', 'DRIBBLING', 'CROSSING', 'SHOOTING', 'FINISHING'],
   Defending:   ['TACKLING', 'MARKING', 'POSITIONING', 'HEADING', 'BRAVERY'],
@@ -69,8 +68,6 @@ export const CATEGORY_STATS: Record<string, string[]> = {
 };
 
 export const ALL_ROUND_SENTINEL = '__ALL_ROUND__';
-
-import type { CoachScanResult } from './documentScanner';
 
 export function resolveCoachStats(
   scan: CoachScanResult,
@@ -87,3 +84,4 @@ export function resolveCoachStats(
   }
   return Array.from(new Set((scan.stats ?? []).map((s) => s.metricName)));
 }
+
