@@ -107,99 +107,35 @@ Full specification: `SYSTEM_BLUEPRINT.md`
 
 | Problem | Change | Status |
 |---|---|---|
-| B1 | DynamicsModel interface (`src/engine/dynamicsModel.ts`) | ✅ DONE — commit 1b0f8ea |
-| B2 | applyIntervention Stage 11 + P20/P21 Crosshair contracts | ✅ DONE — commit 1b0f8ea |
-| B3 | evaluateRuleSet + isTrainingLocked refactor + P18-param/P19-param + lock_when_bad Z3 | ✅ DONE — commit f54e847 |
-| B6 | Zod ingest boundary (DocumentScanResultSchema) + MetricValue Dafny newtype | ✅ DONE — commit a406fb9 |
-| B4 | propagateUncertainty / ProjectionBand + P22 Z3 | **Pending** |
-| B5 | getConstantMeta() accessor + load_constant_meta() Python mirror | **Pending** |
+| B1 | DynamicsModel interface (`src/engine/dynamicsModel.ts`) | ✅ DONE |
+| B2 | applyIntervention Stage 11 + P20/P21 Crosshair contracts | ✅ DONE |
+| B3 | evaluateRuleSet + isTrainingLocked refactor + P18-param/P19-param + lock_when_bad Z3 | ✅ DONE |
+| B6 | Zod ingest boundary (DocumentScanResultSchema) + MetricValue Dafny newtype | ✅ DONE |
+| B4 | propagateUncertainty / ProjectionBand + P22 Z3 | ✅ DONE |
+| B5 | getConstantMeta() accessor + load_constant_meta() Python mirror | ✅ DONE |
 
-**Current proof count: 29/29 pass** (8 Crosshair + 7 equivalence + 14 Z3)
+**Current proof count: 30/30 pass** (8 Crosshair + 7 equivalence + 15 Z3)
 
-## Handover — What to do next
+## CI Workflow Blocker
 
-### B4 — propagateUncertainty + P22
+`.github/workflows/eas-update.yml` and `.github/workflows/proofs.yml` exist locally but could
+not be pushed — the PAT used lacked the `workflow` scope.
 
-Add to `src/engine/engineMath.ts` (after `applyIntervention`):
+**To push them:** update the PAT at GitHub → Settings → Developer settings → Personal access
+tokens → edit token → tick `workflow` → regenerate. Then from Termux:
 
-```typescript
-import type { ProjectionBand, ConstantConfidence } from '../types/resources';
-
-export function propagateUncertainty(
-  estimate: number,
-  sensitivityC0: number,   // ∂gain/∂C0 — caller computes via finite diff
-  sensitivityK: number,    // ∂gain/∂K
-  varC0: number,           // from ConstantMeta<number>.variance on C0
-  varK: number,            // from ConstantMeta<number>.variance on K
-  provenanceFlags: ProjectionBand['provenanceFlags'],
-): ProjectionBand {
-  const variance = Math.pow(sensitivityC0, 2) * varC0 + Math.pow(sensitivityK, 2) * varK;
-  const sd = Math.sqrt(Math.max(0, variance));
-  return {
-    estimate,
-    variance,
-    ci95Lo: estimate - 1.96 * sd,
-    ci95Hi: estimate + 1.96 * sd,
-    provenanceFlags,
-  };
-}
-```
-
-Add Python mirror in `verification/engine_pure.py` with PEP 316 contracts.
-
-Add Z3 proof `test_p22_projection_band_variance_nonneg` to `tests/proofs/test_z3_properties.py`:
-```python
-@_skip
-def test_p22_projection_band_variance_nonneg():
-    """P22: propagated variance is non-negative for all valid inputs."""
-    s = Solver()
-    s.set("timeout", 5000)
-    s_c0 = Real("s_c0"); s_k = Real("s_k")
-    var_c0 = Real("var_c0"); var_k = Real("var_k")
-    variance = Real("variance")
-    s.add(var_c0 >= 0.0, var_k >= 0.0)
-    s.add(variance == s_c0 * s_c0 * var_c0 + s_k * s_k * var_k)
-    s.add(variance < 0.0)
-    _check(s)
-```
-
-### B5 — getConstantMeta accessor
-
-Add to `src/engine/engineConstants.ts`:
-```typescript
-import logisticsProfile from '../../profiles/logistics_v1.json';
-
-export function getConstantMeta(key: string): {
-  source: string; n: number; cv?: number; confidence: string; citation?: string; variance?: number;
-} | undefined {
-  const raw = (logisticsProfile as Record<string, unknown>)[`${key}_meta`];
-  return raw as ReturnType<typeof getConstantMeta> | undefined;
-}
-```
-
-Add `load_constant_meta()` to `verification/constants_pure.py`:
-```python
-def load_constant_meta(key: str) -> dict | None:
-    return _p.get(f'{key}_meta')
-```
-
-Verify: `load_constant_meta('xpCostBase')['confidence'] == 'high'` ✓
-and `load_constant_meta('baseXpPerSession')['confidence'] == 'assumed'` ✓
-
-### Git push — BLOCKED
-
-The target repo `payloadguard-plg/aintegrity-logistics-engine` does not exist yet (GitHub org repo
-creation returned 403) and is not in scope for the GitHub MCP tools. The remote is configured as:
-`git remote -v` → `origin https://github.com/payloadguard-plg/aintegrity-logistics-engine.git`
-
-The user needs to:
-1. Create the GitHub repo `payloadguard-plg/aintegrity-logistics-engine`
-2. Add it to the session scope (or provide Git credentials)
-
-All commits are local on `claude/squad-optimiservp-BQH8C`. Push with:
 ```bash
+cd aintegrity-logistics-engine
+git fetch origin
+git checkout claude/squad-optimiservp-BQH8C
+# add the two workflow files manually or copy them, then:
+git add .github/
+git commit -m "Add CI workflows (eas-update + proofs)"
 git push -u origin claude/squad-optimiservp-BQH8C
 ```
+
+The file contents are in the local container at
+`/home/user/logistics-engine/.github/workflows/`.
 
 ---
 
