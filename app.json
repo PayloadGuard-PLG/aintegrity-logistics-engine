@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "AIntegrity Squad Optimiser",
+    "slug": "squad-optimiser",
+    "scheme": "squadoptimiser",
+    "version": "1.0.0",
+    "newArchEnabled": false,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0c"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "android": {
+      "package": "com.payloadguard.squadoptimiser",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0a0a0c"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-updates",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Squad Optimiser to select screenshots from your photo library."
+        }
+      ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/5e2319b8-dda7-4fbf-9fb4-5918d690d476"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5e2319b8-dda7-4fbf-9fb4-5918d690d476"
+      }
+    },
+    "owner": "sdarkvader"
+  }
+}

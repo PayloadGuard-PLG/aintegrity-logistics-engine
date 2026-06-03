@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1778080880341,
+      "tag": "0000_kind_daimon_hellstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778087829687,
+      "tag": "0001_natural_northstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1746662400000,
+      "tag": "0002_player_talent",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1746835200000,
+      "tag": "0003_player_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1746921600000,
+      "tag": "0004_squad_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1747008000000,
+      "tag": "0005_tier_rename",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1747094400000,
+      "tag": "0006_drill_presets",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1747267200000,
+      "tag": "0007_new_role",
+      "breakpoints": true
+    }
+  ]
+}
