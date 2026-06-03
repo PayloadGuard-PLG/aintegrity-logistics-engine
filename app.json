@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "AIntegrity Squad Optimiser",
-    "slug": "squad-optimiser",
-    "scheme": "squadoptimiser",
+    "name": "AIntegrity Logistics Engine",
+    "slug": "logistics-engine",
+    "scheme": "logisticsengine",
     "version": "1.0.0",
     "newArchEnabled": false,
     "icon": "./assets/icon.png",
@@ -17,7 +17,7 @@
       "favicon": "./assets/favicon.png"
     },
     "android": {
-      "package": "com.payloadguard.squadoptimiser",
+      "package": "com.payloadguard.logisticsengine",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0a0a0c"
@@ -29,12 +29,12 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Squad Optimiser to select screenshots from your photo library."
+          "photosPermission": "Allow Logistics Engine to select screenshots from your photo library."
         }
       ]
     ],
     "updates": {
-      "url": "https://u.expo.dev/5e2319b8-dda7-4fbf-9fb4-5918d690d476"
+      "url": "https://u.expo.dev/d61de2f2-abc7-495e-a89a-03ee878db83b"
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -44,7 +44,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "5e2319b8-dda7-4fbf-9fb4-5918d690d476"
+        "projectId": "d61de2f2-abc7-495e-a89a-03ee878db83b"
       }
     },
     "owner": "sdarkvader"
